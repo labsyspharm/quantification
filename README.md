@@ -17,6 +17,6 @@ Module for single-cell data extraction given a segmentation mask(s) and multi-ch
 python CommandSingleCellExtraction.py --mask_dir  --z_stacks  --output  --channel_names  --suffix
 
 # Developer
-Joshua Hess
+Joshua Hess (https://github.com/JoshuaHess12)
 
 Denis Schapiro
