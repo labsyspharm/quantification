@@ -19,4 +19,4 @@ python CommandSingleCellExtraction.py --mask_dir  --z_stacks  --output  --channe
 # Developer
 Joshua Hess (https://github.com/JoshuaHess12)
 
-Denis Schapiro
+Denis Schapiro (https://github.com/DenisSch)
