@@ -1,11 +1,11 @@
 # Single cell quantification
-Module for single-cell data extraction given a segmentation mask(s) and multi-channel h5 image(s). The CSV structure is aligned with histoCAT output.
+Module for single-cell data extraction given a segmentation mask(s) and multi-channel image(s). The CSV structure is aligned with histoCAT output.
 
 **CommandSingleCellExtraction.py**:
 
 * mask_dir: Path to directory where masks are stored (Ex: ./segmentation)
 
-* z_stacks: Path to image(s) for quantification.  (Ex: ./registration/*.h5)
+* z_stacks: Path to image(s) for quantification.  (Ex: ./registration/*.h5) -> works with .h(df)5 or .tif(f)
 
 * output: Path to output directory. (Ex: ./feature_extraction)
 
