@@ -87,6 +87,9 @@ def PrepareData(mask,z_stack,channel_names):
     if im_name.suffix == '.tiff' or im_name.suffix == '.tif':
         #Read the image
         z_stack = skimage.io.imread(im_name,plugin='tifffile')
+        #Switch the axis order from cyx to yxc - consistent with reading single channel tif (mask)
+        z_stack = np.swapaxes(z_stack,0,2)
+        z_stack = np.swapaxes(z_stack,0,1)
 
     #Check to see if image is hdf5
     elif im_name.suffix == '.h5' or im_name.suffix == '.hdf5':
@@ -94,11 +97,13 @@ def PrepareData(mask,z_stack,channel_names):
         f = h5py.File(im_name,'r+')
         #Get the dataset name from the h5 file
         dat_name = list(f.keys())[0]
+        ###If the hdf5 is exported from ilastik fiji plugin, the dat_name will be 'data'
         #Get the image data
         z_stack = np.array(f[dat_name])
-        z_stack.shape
         #Remove the first axis (ilastik convention)
         z_stack = z_stack.reshape((z_stack.shape[1],z_stack.shape[2],z_stack.shape[3]))
+        ###If the hdf5 is exported from ilastik fiji plugin, the order will need to be
+        ###switched as above --> z_stack = np.swapaxes(z_stack,0,2) --> z_stack = np.swapaxes(z_stack,0,1)
 
     #Read the mask
     mask = skimage.io.imread(mask,plugin='tifffile')
