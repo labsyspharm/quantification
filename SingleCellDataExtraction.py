@@ -11,13 +11,13 @@ import skimage.measure as measure
 from pathlib import Path
 
 
-def MaskChannel(mask,channel):
+def MaskChannel(mask_loaded,image_loaded):
     """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
     #Perform the masking to get all measures
-    dat = measure.regionprops(mask,channel)
+    dat = measure.regionprops(mask_loaded,image_loaded)
     #Extract the stats
     intensity = []
     for i in range(len(dat)):
@@ -87,6 +87,8 @@ def PrepareData(mask,image,channel_names):
         #Switch the axis order from cyx to yxc - consistent with reading single channel tif (mask)
         image_loaded = np.swapaxes(image_loaded,0,2)
         image_loaded = np.swapaxes(image_loaded,0,1)
+        # Remove extra axis
+        image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
 
     #Check to see if image is hdf5
     elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
@@ -127,9 +129,9 @@ def MaskZstack(mask_loaded,image_loaded,channel_names_loaded):
     IDs = pd.DataFrame(MaskIDs(mask_loaded))
     #Iterate through the z stack to extract intensities
     list_of_chan = []
-    for z in range(image_loaded.shape[2]):
+    for z in range(image_loaded.shape[0]):
         #Get the z channel and the associated channel name from list of channel names
-        list_of_chan.append(MaskChannel(mask_loaded,image_loaded[:,:,z]))
+        list_of_chan.append(MaskChannel(mask_loaded,image_loaded[z,:,:]))
     #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
     dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
     #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
@@ -163,6 +165,8 @@ def ExtractSingleCells(mask,image,channel_names,output):
     #Use the above information to mask z stack
     scdata = MaskZstack(mask_loaded,image_loaded,channel_names_loaded)
     #Write the singe cell data to a csv file using the image name
+    im_full_name = os.path.basename(image)
+    im_name = im_full_name.split('.')[0]
     scdata.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
 
 
@@ -174,7 +178,10 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
     #Run the ExtractSingleCells function for this image
     ExtractSingleCells(mask,image,channel_names,output)
     #Print update
-    print("Finished "+str(z_stack))
+    
+    im_full_name = os.path.basename(image)
+    im_name = im_full_name.split('.')[0]
+    print("Finished "+str(im_name))
 
 
 
