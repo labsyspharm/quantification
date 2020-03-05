@@ -153,11 +153,9 @@ def MaskZstack(mask,z_stack,channel_names):
     return dat
 
 
-def ExtractSingleCells(mask_dir,z_stack,channel_names,output,suffix="_Probabilities_noise_RemoveNoise_mask"):
+def ExtractSingleCells(mask,z_stack,channel_names,output):
     """Function for extracting single cell information from input
-    path containing single-cell masks, z_stack path, and channel_names path.
-    The suffix parameter controls the ending added to the images upon export
-    to masks (Ex: image1.ome.tif -> image1_mask.tif -> suffix = "_mask")"""
+    path containing single-cell masks, z_stack path, and channel_names path."""
 
     #Get the name of the z_stack
     z_stack = Path(z_stack)
@@ -165,7 +163,7 @@ def ExtractSingleCells(mask_dir,z_stack,channel_names,output,suffix="_Probabilit
     #Create pathlib object for output
     output = Path(output)
     #Get the name for the mask in the mask directory
-    mask_name = Path(os.path.join(mask_dir,str(im_name+suffix+".tif")))
+    mask_name = Path(mask)
     #Run the data Prep function
     mask, z_stack, channel_names = PrepareData(mask_name,z_stack,channel_names)
     #Use the above information to mask z stack
@@ -174,34 +172,44 @@ def ExtractSingleCells(mask_dir,z_stack,channel_names,output,suffix="_Probabilit
     scdata.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
 
 
-def MultiExtractSingleCells(mask_dir,z_stacks,channel_names,output,suffix="_Probabilities_noise_RemoveNoise_mask"):
+def MultiExtractSingleCells(masks,z_stacks,channel_names,output):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
     #Iterate over each image in the list if only a single output
     if len(output) < 2:
-        #Iterate through the images and export to the same location
-        for z_stack in z_stacks:
-            #Print update
-            print("Extracting sinle-cell data for "+str(z_stack)+'...')
-            #Run the ExtractSingleCells function for this image
-            ExtractSingleCells(mask_dir,z_stack,channel_names,output[0],suffix[0])
-            #Print update
-            print("Finished "+str(z_stack))
+        #Check to make sure the masks and image paths are equal in length
+        if len(masks) != len(z_stacks):
+            raise(ValueError("Number of masks not equal to number of z-stacks"))
+        #Alternatively, iterate over masks and z stacks
+        else:
+            #Iterate through the images and export to the same location
+            for i in range(len(z_stacks)):
+                #Print update
+                print("Extracting sinle-cell data for "+str(z_stacks[i])+'...')
+                #Run the ExtractSingleCells function for this image
+                ExtractSingleCells(masks[i],z_stacks[i],channel_names,output[0])
+                #Print update
+                print("Finished "+str(z_stacks[i]))
     #Alternatively, iterate over output directories
     else:
         #Check to make sure the output directories and image paths are equal in length
         if len(output) != len(z_stacks):
             raise(ValueError("Detected more than one output but not as many directories as images"))
         else:
-            #Iterate through images and output directories
-            for i in range(len(z_stacks)):
-                #Print update
-                print("Extracting sinle-cell data for "+str(z_stacks[i])+'...')
-                #Run the ExtractSingleCells function for this image and output directory
-                ExtractSingleCells(mask_dir,z_stack[i],channel_names,output[i],suffix[0])
-                #Print update
-                print("Finished "+str(z_stacks[i]))
+            #Check to make sure the masks and image paths are equal in length
+            if len(masks) != len(z_stacks):
+                raise(ValueError("Number of masks not equal to number of z-stacks"))
+            #Alternatively, iterate over masks and z stacks
+            else:
+                #Iterate through images and output directories
+                for i in range(len(z_stacks)):
+                    #Print update
+                    print("Extracting sinle-cell data for "+str(z_stacks[i])+'...')
+                    #Run the ExtractSingleCells function for this image and output directory
+                    ExtractSingleCells(masks[i],z_stacks[i],channel_names,output[i])
+                    #Print update
+                    print("Finished "+str(z_stacks[i]))
 
 
 
