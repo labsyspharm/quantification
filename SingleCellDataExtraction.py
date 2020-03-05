@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def MaskChannel(mask,channel):
-    """Function for masking a single channel image and returning stats
+    """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
@@ -74,51 +74,48 @@ def MaskIDs(mask):
     return IDs
 
 
-def PrepareData(mask,z_stack,channel_names):
+def PrepareData(mask,image,channel_names):
     """Function for preparing input for maskzstack function. Connecting function
     to use with mc micro ilastik pipeline"""
 
-    #Get the image path
-    im_name = Path(z_stack)
-    #Create pathlib object for channel_names
-    channel_names = Path(channel_names)
+    image_path = Path(image)
 
     #Check to see if the image is tiff
-    if im_name.suffix == '.tiff' or im_name.suffix == '.tif':
+    if image_path.suffix == '.tiff' or image_path.suffix == '.tif':
         #Read the image
-        z_stack = skimage.io.imread(im_name,plugin='tifffile')
+        image_loaded = skimage.io.imread(image,plugin='tifffile')
         #Switch the axis order from cyx to yxc - consistent with reading single channel tif (mask)
-        z_stack = np.swapaxes(z_stack,0,2)
-        z_stack = np.swapaxes(z_stack,0,1)
+        image_loaded = np.swapaxes(image_loaded,0,2)
+        image_loaded = np.swapaxes(image_loaded,0,1)
 
     #Check to see if image is hdf5
-    elif im_name.suffix == '.h5' or im_name.suffix == '.hdf5':
+    elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
         #Read the image
-        f = h5py.File(im_name,'r+')
+        f = h5py.File(image,'r+')
         #Get the dataset name from the h5 file
         dat_name = list(f.keys())[0]
         ###If the hdf5 is exported from ilastik fiji plugin, the dat_name will be 'data'
         #Get the image data
-        z_stack = np.array(f[dat_name])
+        image_loaded = np.array(f[dat_name])
         #Remove the first axis (ilastik convention)
-        z_stack = z_stack.reshape((z_stack.shape[1],z_stack.shape[2],z_stack.shape[3]))
+        image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[2],image_loaded.shape[3]))
         ###If the hdf5 is exported from ilastik fiji plugin, the order will need to be
         ###switched as above --> z_stack = np.swapaxes(z_stack,0,2) --> z_stack = np.swapaxes(z_stack,0,1)
 
     #Read the mask
-    mask = skimage.io.imread(mask,plugin='tifffile')
+    mask_loaded = skimage.io.imread(mask,plugin='tifffile')
     #Read the channels names to pass to the
-    channel_names = pd.read_csv(channel_names,header=None)
+    channel_names_loaded = pd.read_csv(channel_names,header=None)
     #Add a column index for ease
-    channel_names.columns = ["marker"]
+    channel_names_loaded.columns = ["marker"]
     #Convert the channel names to a list
-    channel_names = list(channel_names.marker.values)
+    channel_names_loaded = list(channel_names_loaded.marker.values)
 
     #Return the objects
-    return mask, z_stack, channel_names
+    return mask_loaded, image_loaded, channel_names_loaded
 
 
-def MaskZstack(mask,z_stack,channel_names):
+def MaskZstack(mask_loaded,image_loaded,channel_names_loaded):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -127,14 +124,14 @@ def MaskZstack(mask,z_stack,channel_names):
     z_stack: Multichannel z stack image"""
 
     #Get the CellIDs for this dataset
-    IDs = pd.DataFrame(MaskIDs(mask))
+    IDs = pd.DataFrame(MaskIDs(mask_loaded))
     #Iterate through the z stack to extract intensities
     list_of_chan = []
-    for z in range(z_stack.shape[2]):
+    for z in range(image_loaded.shape[2]):
         #Get the z channel and the associated channel name from list of channel names
-        list_of_chan.append(MaskChannel(mask,z_stack[:,:,z]))
+        list_of_chan.append(MaskChannel(mask_loaded,image_loaded[:,:,z]))
     #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
-    dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names,list_of_chan)))],axis=1)
+    dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
     #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
     cols = list(dat.columns.values)
     #Reorder the list (Move xy position to end with spatial information)
@@ -153,56 +150,31 @@ def MaskZstack(mask,z_stack,channel_names):
     return dat
 
 
-def ExtractSingleCells(mask_dir,z_stack,channel_names,output,suffix="_Probabilities_noise_RemoveNoise_mask"):
+def ExtractSingleCells(mask,image,channel_names,output):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path.
     The suffix parameter controls the ending added to the images upon export
     to masks (Ex: image1.ome.tif -> image1_mask.tif -> suffix = "_mask")"""
 
-    #Get the name of the z_stack
-    z_stack = Path(z_stack)
-    im_name = z_stack.stem
     #Create pathlib object for output
     output = Path(output)
-    #Get the name for the mask in the mask directory
-    mask_name = Path(os.path.join(mask_dir,str(im_name+suffix+".tif")))
     #Run the data Prep function
-    mask, z_stack, channel_names = PrepareData(mask_name,z_stack,channel_names)
+    mask_loaded, image_loaded, channel_names_loaded = PrepareData(mask,image,channel_names)
     #Use the above information to mask z stack
-    scdata = MaskZstack(mask,z_stack,channel_names)
+    scdata = MaskZstack(mask_loaded,image_loaded,channel_names_loaded)
     #Write the singe cell data to a csv file using the image name
     scdata.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
 
 
-def MultiExtractSingleCells(mask_dir,z_stacks,channel_names,output,suffix="_Probabilities_noise_RemoveNoise_mask"):
+def MultiExtractSingleCells(mask,image,channel_names,output):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
-    #Iterate over each image in the list if only a single output
-    if len(output) < 2:
-        #Iterate through the images and export to the same location
-        for z_stack in z_stacks:
-            #Print update
-            print("Extracting sinle-cell data for "+str(z_stack)+'...')
-            #Run the ExtractSingleCells function for this image
-            ExtractSingleCells(mask_dir,z_stack,channel_names,output[0],suffix[0])
-            #Print update
-            print("Finished "+str(z_stack))
-    #Alternatively, iterate over output directories
-    else:
-        #Check to make sure the output directories and image paths are equal in length
-        if len(output) != len(z_stacks):
-            raise(ValueError("Detected more than one output but not as many directories as images"))
-        else:
-            #Iterate through images and output directories
-            for i in range(len(z_stacks)):
-                #Print update
-                print("Extracting sinle-cell data for "+str(z_stacks[i])+'...')
-                #Run the ExtractSingleCells function for this image and output directory
-                ExtractSingleCells(mask_dir,z_stack[i],channel_names,output[i],suffix[0])
-                #Print update
-                print("Finished "+str(z_stacks[i]))
-
+    print("Extracting sinle-cell data for "+str(image)+'...')
+    #Run the ExtractSingleCells function for this image
+    ExtractSingleCells(mask,image,channel_names,output)
+    #Print update
+    print("Finished "+str(z_stack))
 
 
 
