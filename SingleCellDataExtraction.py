@@ -154,9 +154,7 @@ def MaskZstack(mask_loaded,image_loaded,channel_names_loaded):
 
 def ExtractSingleCells(mask,image,channel_names,output):
     """Function for extracting single cell information from input
-    path containing single-cell masks, z_stack path, and channel_names path.
-    The suffix parameter controls the ending added to the images upon export
-    to masks (Ex: image1.ome.tif -> image1_mask.tif -> suffix = "_mask")"""
+    path containing single-cell masks, z_stack path, and channel_names path."""
 
     #Create pathlib object for output
     output = Path(output)
@@ -182,14 +180,3 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
-
-
-
-
-
-
-
-
-
-
-#
