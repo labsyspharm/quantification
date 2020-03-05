@@ -8,7 +8,7 @@ def ParseInputDataExtract():
 
 #if __name__ == '__main__':
    parser = argparse.ArgumentParser()
-   parser.add_argument('--masks')
+   parser.add_argument('--masks',nargs='*')
    parser.add_argument('--z_stacks',nargs='*')
    parser.add_argument('--channel_names')
    parser.add_argument('--output',nargs='*')
