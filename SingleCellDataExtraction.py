@@ -80,17 +80,17 @@ def PrepareData(mask,image,channel_names):
 
     image_path = Path(image)
 
-    #Check to see if the image is ome.tif(f)
-    if  image.endswith == '.ome.tif' or image.endswith == '.ome.tiff':
-        #Read the image
-        image_loaded = skimage.io.imread(image,plugin='tifffile')
-
     #Check to see if image tif(f)
-    elif image_path.suffix == '.tiff' or image_path.suffix == '.tif':
-                #Read the image
-        image_loaded = skimage.io.imread(image,plugin='tifffile')
-        # Remove extra axis
-        image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
+    if image_path.suffix == '.tiff' or image_path.suffix == '.tif':
+        #Check to see if the image is ome.tif(f)
+        if  image.endswith == '.ome.tif' or image.endswith == '.ome.tiff':
+            #Read the image
+            image_loaded = skimage.io.imread(image,plugin='tifffile')
+        else:
+            #Read the image
+            image_loaded = skimage.io.imread(image,plugin='tifffile')
+            # Remove extra axis
+            image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
 
     #Check to see if image is hdf5
     elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
