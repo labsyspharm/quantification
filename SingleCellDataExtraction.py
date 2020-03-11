@@ -80,13 +80,15 @@ def PrepareData(mask,image,channel_names):
 
     image_path = Path(image)
 
-    #Check to see if the image is tiff
-    if image_path.suffix == '.tiff' or image_path.suffix == '.tif':
+    #Check to see if the image is ome.tif(f)
+    if  image.endswith == '.ome.tif' or image.endswith == '.ome.tiff':
         #Read the image
         image_loaded = skimage.io.imread(image,plugin='tifffile')
-        #Switch the axis order from cyx to yxc - consistent with reading single channel tif (mask)
-        image_loaded = np.swapaxes(image_loaded,0,2)
-        image_loaded = np.swapaxes(image_loaded,0,1)
+
+    #Check to see if image tif(f)
+    elif image_path.suffix == '.tiff' or image_path.suffix == '.tif':
+                #Read the image
+        image_loaded = skimage.io.imread(image,plugin='tifffile')
         # Remove extra axis
         image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
 
