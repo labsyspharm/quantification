@@ -86,9 +86,11 @@ def PrepareData(mask,image,channel_names):
         if  image.endswith == '.ome.tif' or image.endswith == '.ome.tiff':
             #Read the image
             image_loaded = skimage.io.imread(image,plugin='tifffile')
+            print('OME.TIF(F) found') 
         else:
             #Read the image
             image_loaded = skimage.io.imread(image,plugin='tifffile')
+            print('TIF(F) found')
             # Remove extra axis
             image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
 
