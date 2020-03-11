@@ -83,7 +83,7 @@ def PrepareData(mask,image,channel_names):
     #Check to see if image tif(f)
     if image_path.suffix == '.tiff' or image_path.suffix == '.tif':
         #Check to see if the image is ome.tif(f)
-        if  image.endswith(('.ome.tif','.ome.tiff'))
+        if  image.endswith(('.ome.tif','.ome.tiff')):
             #Read the image
             image_loaded = skimage.io.imread(image,plugin='tifffile')
             #print('OME TIF(F) found') 
