@@ -92,7 +92,7 @@ def PrepareData(mask,image,channel_names):
             image_loaded = skimage.io.imread(image,plugin='tifffile')
             #print('TIF(F) found')
             # Remove extra axis
-            image_loaded = image_loaded.reshape((image_loaded.shape[0],image_loaded.shape[3],image_loaded.shape[4]))
+            image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[3],image_loaded.shape[4]))
 
     #Check to see if image is hdf5
     elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
