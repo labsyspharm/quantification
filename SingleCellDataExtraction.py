@@ -9,21 +9,23 @@ import numpy as np
 import os
 import skimage.measure as measure
 from pathlib import Path
+import tracemalloc
 
 
-def MaskChannel(mask_loaded,image_loaded):
+
+def MaskChannel(mask_loaded,image_loaded_z):
     """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
-    #Perform the masking to get all measures
-    dat = measure.regionprops(mask_loaded,image_loaded)
-    #Extract the stats
-    intensity = []
+    #Perform the masking to get all mean intensities
+    dat = measure.regionprops(mask_loaded,image_loaded_z)
+    # collect all intensities
+    intensity_z = []
     for i in range(len(dat)):
-        intensity.append(dat[i].mean_intensity)
-    #Return the dataframe object
-    return intensity
+        intensity_z.append(dat[i].mean_intensity)
+    # return per channel
+    return intensity_z
 
 
 def MaskIDs(mask):
@@ -74,7 +76,7 @@ def MaskIDs(mask):
     return IDs
 
 
-def PrepareData(mask,image,channel_names):
+def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
     to use with mc micro ilastik pipeline"""
 
@@ -85,14 +87,14 @@ def PrepareData(mask,image,channel_names):
         #Check to see if the image is ome.tif(f)
         if  image.endswith(('.ome.tif','.ome.tiff')):
             #Read the image
-            image_loaded = skimage.io.imread(image,plugin='tifffile')
+            image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
             #print('OME TIF(F) found') 
         else:
             #Read the image
-            image_loaded = skimage.io.imread(image,plugin='tifffile')
+            image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
             #print('TIF(F) found')
             # Remove extra axis
-            image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[3],image_loaded.shape[4]))
+            #image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[3],image_loaded.shape[4]))
 
     #Check to see if image is hdf5
     elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
@@ -108,20 +110,11 @@ def PrepareData(mask,image,channel_names):
         ###If the hdf5 is exported from ilastik fiji plugin, the order will need to be
         ###switched as above --> z_stack = np.swapaxes(z_stack,0,2) --> z_stack = np.swapaxes(z_stack,0,1)
 
-    #Read the mask
-    mask_loaded = skimage.io.imread(mask,plugin='tifffile')
-    #Read the channels names to pass to the
-    channel_names_loaded = pd.read_csv(channel_names,header=None)
-    #Add a column index for ease
-    channel_names_loaded.columns = ["marker"]
-    #Convert the channel names to a list
-    channel_names_loaded = list(channel_names_loaded.marker.values)
-
     #Return the objects
-    return mask_loaded, image_loaded, channel_names_loaded
+    return image_loaded_z
 
 
-def MaskZstack(mask_loaded,image_loaded,channel_names_loaded):
+def MaskZstack(mask_loaded,image,channel_names_loaded):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -133,9 +126,12 @@ def MaskZstack(mask_loaded,image_loaded,channel_names_loaded):
     IDs = pd.DataFrame(MaskIDs(mask_loaded))
     #Iterate through the z stack to extract intensities
     list_of_chan = []
-    for z in range(image_loaded.shape[0]):
-        #Get the z channel and the associated channel name from list of channel names
-        list_of_chan.append(MaskChannel(mask_loaded,image_loaded[z,:,:]))
+    #Get the z channel and the associated channel name from list of channel names
+    for z in range(len(channel_names_loaded)):
+        #Run the data Prep function
+        image_loaded_z = PrepareData(image,z)
+        #Use the above information to mask z stack
+        list_of_chan.append(MaskChannel(mask_loaded,image_loaded_z))
     #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
     dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
     #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
@@ -162,25 +158,45 @@ def ExtractSingleCells(mask,image,channel_names,output):
 
     #Create pathlib object for output
     output = Path(output)
-    #Run the data Prep function
-    mask_loaded, image_loaded, channel_names_loaded = PrepareData(mask,image,channel_names)
-    #Use the above information to mask z stack
-    scdata = MaskZstack(mask_loaded,image_loaded,channel_names_loaded)
+
+    #Read the channels names
+    channel_names_loaded = pd.read_csv(channel_names,header=None)
+    #Add a column index for ease
+    channel_names_loaded.columns = ["marker"]
+    #Convert the channel names to a list
+    channel_names_loaded = list(channel_names_loaded.marker.values)
+    #Read the mask
+    mask_loaded = skimage.io.imread(mask,plugin='tifffile')
+
+    scdata_z = MaskZstack(mask_loaded,image,channel_names_loaded)
     #Write the singe cell data to a csv file using the image name
+
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
-    scdata.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
+    scdata_z.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
 
 
 def MultiExtractSingleCells(mask,image,channel_names,output):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
-    print("Extracting sinle-cell data for "+str(image)+'...')
+    print("Extracting single-cell data for "+str(image)+'...')
+    #Start memory monitoring --- next line can be commented
+    tracemalloc.start()
+    # ---
+
     #Run the ExtractSingleCells function for this image
     ExtractSingleCells(mask,image,channel_names,output)
-    #Print update
     
+    #Display memory monitoring --- next 3 lines can be commented
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
+    tracemalloc.stop()
+    # ---
+
+    #Print update
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
+
+
