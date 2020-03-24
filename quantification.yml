@@ -5,3 +5,6 @@ dependencies:
   - pandas
   - numpy
   - pathlib
+  - shutil
+  - tracemalloc
+  - argparse
