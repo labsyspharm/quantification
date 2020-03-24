@@ -9,13 +9,14 @@ import numpy as np
 import os
 import skimage.measure as measure
 from pathlib import Path
+import shutil
 import tracemalloc
+
 
 
 
 def MaskChannel(mask_loaded,image_loaded_z):
     """Function for quantifying a single channel image
-
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
     #Perform the masking to get all mean intensities
@@ -24,6 +25,8 @@ def MaskChannel(mask_loaded,image_loaded_z):
     intensity_z = []
     for i in range(len(dat)):
         intensity_z.append(dat[i].mean_intensity)
+    #Remove excess region prop information from memory
+    dat = 0
     # return per channel
     return intensity_z
 
@@ -31,7 +34,6 @@ def MaskChannel(mask_loaded,image_loaded_z):
 def MaskIDs(mask):
     """This function will extract the CellIDs and the XY positions for each
     cell based on that cells centroid
-
     Returns a dictionary object"""
     #Get the CellIDs for this dataset
     dat = measure.regionprops(mask)
@@ -68,10 +70,24 @@ def MaskIDs(mask):
         #Get the extent
         orientation.append(dat[i].orientation)
 
+    #Remove excess region props from memory
+    dat = 0
+
     #Form a dataframe from the lists
     IDs = {"CellID": labels, "X_position": xcoords, "Y_position": ycoords,"Area":area,\
         "MajorAxisLength":major_axis_length,"MinorAxisLength":minor_axis_length,\
         "Eccentricity":eccentricity,"Solidity":solidity,"Extent":extent,"Orientation":orientation}
+    #Remove excess information from memory
+    labels = 0
+    xcoords = 0
+    ycoords = 0
+    area = 0
+    minor_axis_length=0
+    major_axis_length=0
+    eccentricity = 0
+    solidity = 0
+    extent=0
+    orientation=0
     #Return the IDs object
     return IDs
 
@@ -88,7 +104,7 @@ def PrepareData(image,z):
         if  image.endswith(('.ome.tif','.ome.tiff')):
             #Read the image
             image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
-            #print('OME TIF(F) found') 
+            #print('OME TIF(F) found')
         else:
             #Read the image
             image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
@@ -114,31 +130,84 @@ def PrepareData(image,z):
     return image_loaded_z
 
 
-def MaskZstack(mask_loaded,image,channel_names_loaded):
+def MaskZstack(mask_loaded,image,channel_names_loaded,output):
     """This function will extract the stats for each cell mask through each channel
     in the input image
-
     mask: Tiff image mask that represents the cells in your image. Must end with the word mask!!
-
     z_stack: Multichannel z stack image"""
+
+    #Create a list to keep the filenames in
+    fnames = []
+    #Ensure the im_name is a pathlib object
+    im_name = Path(image)
+    #Create pathlib object for output
+    output = Path(output)
+    #Get home directory (Current)
+    home_dir = os.getcwd()
+    #Create a temporary directory to export files to
+    tmp_dir = Path(os.path.join(str(output),im_name.stem.replace('.ome','')+"_tmp"))
+    os.mkdir(str(tmp_dir))
+    #Change to this directory
+    os.chdir(str(tmp_dir))
+
 
     #Get the CellIDs for this dataset
     IDs = pd.DataFrame(MaskIDs(mask_loaded))
+    #Create a name for the cell ID file
+    exIDs = Path(os.path.join(tmp_dir,im_name.stem)+"_cellIDs.csv")
+    #Write out the cellIDs to csv
+    IDs.to_csv(exIDs,index=False)
+    #Remove the cell ID information from memory
+    IDs = 0
+    #Update the list of filenames
+    fnames.append(exIDs)
+
     #Iterate through the z stack to extract intensities
-    list_of_chan = []
-    #Get the z channel and the associated channel name from list of channel names
+    #list_of_chan = []
     tracemalloc.start()
+    #Iterate through the z stack to extract intensities (Parallelize?)
     for z in range(len(channel_names_loaded)):
+        #Create a name for this channel
+        exChan = Path(os.path.join(tmp_dir,im_name.stem.replace('.ome',''))+"_"+str(channel_names_loaded[z])+".csv")
         #Run the data Prep function
         image_loaded_z = PrepareData(image,z)
         #Use the above information to mask z stack
-        list_of_chan.append(MaskChannel(mask_loaded,image_loaded_z))
+        #list_of_chan.append(MaskChannel(mask_loaded,image_loaded_z))
+        z_chan = pd.DataFrame(MaskChannel(mask_loaded,image_loaded_z),columns=[str(channel_names_loaded[z])])
+        #Write out the z_channel to a csv
+        z_chan.to_csv(exChan,index=False)
+        #Remove the loaded image and csv frmo memory
+        image_loaded_z = 0
+        z_chan = 0
+        #Update the list of filenames
+        fnames.append(exChan)
+
         #Display memory monitoring --- next 3 lines can be commented
         current, peak = tracemalloc.get_traced_memory()
         print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
         print("Finished "+str(z))
-    #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
-    dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
+    #Change back to the home directory
+    os.chdir(home_dir)
+    #Return a list containing the file names that are individually exported
+    return fnames, tmp_dir
+
+
+def ConcatenateData(fnames,tmp_dir):
+    """Function for concatenating csv files that are exported individually"""
+
+    #Read each file(CellIDs should be first in the list)
+    IDs = pd.read_csv(fnames[0])
+    #Read all of the channels in a list, should be in order if not parallel
+    z_chans = pd.concat([pd.read_csv(f) for f in fnames[1:]],axis=1)
+    #Concatenate the cellID and spatial information with mean intensity per channel
+    dat = pd.concat([IDs,z_chans],axis=1)
+
+    #Remove the excess data from memory
+    IDs = 0
+    z_chans = 0
+    #Delete all of the temporary files that were created
+    shutil.rmtree(tmp_dir)
+
     #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
     cols = list(dat.columns.values)
     #Reorder the list (Move xy position to end with spatial information)
@@ -161,8 +230,6 @@ def ExtractSingleCells(mask,image,channel_names,output):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
-    #Create pathlib object for output
-    output = Path(output)
 
     #Read the channels names
     channel_names_loaded = pd.read_csv(channel_names,header=None)
@@ -172,10 +239,13 @@ def ExtractSingleCells(mask,image,channel_names,output):
     channel_names_loaded = list(channel_names_loaded.marker.values)
     #Read the mask
     mask_loaded = skimage.io.imread(mask,plugin='tifffile')
+    #Write single cell information for each channel individually
+    scdata_fnames_z, tmp_dir = MaskZstack(mask_loaded,image,channel_names_loaded,output)
 
-    scdata_z = MaskZstack(mask_loaded,image,channel_names_loaded)
+    #Concatenate all of the channel files and cell IDs
+    scdata_z = ConcatenateData(scdata_fnames_z,tmp_dir)
+
     #Write the singe cell data to a csv file using the image name
-
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     scdata_z.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
@@ -192,7 +262,7 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
 
     #Run the ExtractSingleCells function for this image
     ExtractSingleCells(mask,image,channel_names,output)
-    
+
     #Display memory monitoring --- next 3 lines can be commented
     current, peak = tracemalloc.get_traced_memory()
     print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
@@ -203,5 +273,3 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
-
-
