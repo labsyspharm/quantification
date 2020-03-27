@@ -18,13 +18,13 @@ def MaskChannel(mask_loaded,image_loaded_z):
 
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
-    #Perform the masking to get all mean intensities
-    dat = measure.regionprops(mask_loaded,image_loaded_z)
-    # collect all intensities
-    intensity_z = []
-    for i in range(len(dat)):
-        intensity_z.append(dat[i].mean_intensity)
-    # return per channel
+    dat = measure.regionprops(mask_loaded, image_loaded_z)
+    n = len(dat)
+    intensity_z = np.empty(n)
+    for i in range(n):
+        intensity_z[i] = dat[i].mean_intensity
+        # Clear reference to avoid memory leak -- see MaskIDs for explanation.
+        dat[i] = None
     return intensity_z
 
 
@@ -33,46 +33,51 @@ def MaskIDs(mask):
     cell based on that cells centroid
 
     Returns a dictionary object"""
-    #Get the CellIDs for this dataset
-    dat = measure.regionprops(mask)
-    #Extract the CellIDs
-    labels = []
-    xcoords = []
-    ycoords = []
-    area = []
-    minor_axis_length=[]
-    major_axis_length=[]
-    eccentricity = []
-    solidity = []
-    extent=[]
-    orientation=[]
-    for i in range(len(dat)):
-        #Get cell labels
-        labels.append(dat[i].label)
-        #Get x coordinate
-        xcoords.append(dat[i].centroid[0])
-        #Get y coordinate
-        ycoords.append(dat[i].centroid[1])
-        #Get Area
-        area.append(dat[i].area)
-        #Get the major_axis_length
-        major_axis_length.append(dat[i].major_axis_length)
-        #Get the minor_axis_length
-        minor_axis_length.append(dat[i].minor_axis_length)
-        #Get the eccentricity
-        eccentricity.append(dat[i].eccentricity)
-        #Get the solidity
-        solidity.append(dat[i].solidity)
-        #Get the extent
-        extent.append(dat[i].extent)
-        #Get the extent
-        orientation.append(dat[i].orientation)
 
-    #Form a dataframe from the lists
-    IDs = {"CellID": labels, "X_position": xcoords, "Y_position": ycoords,"Area":area,\
-        "MajorAxisLength":major_axis_length,"MinorAxisLength":minor_axis_length,\
-        "Eccentricity":eccentricity,"Solidity":solidity,"Extent":extent,"Orientation":orientation}
-    #Return the IDs object
+    dat = measure.regionprops(mask)
+    n = len(dat)
+
+    # Pre-allocate numpy arrays for all properties we'll calculate.
+    labels = np.empty(n, int)
+    xcoords = np.empty(n)
+    ycoords = np.empty(n)
+    area = np.empty(n, int)
+    minor_axis_length = np.empty(n)
+    major_axis_length = np.empty(n)
+    eccentricity = np.empty(n)
+    solidity = np.empty(n)
+    extent = np.empty(n)
+    orientation = np.empty(n)
+
+    for i in range(n):
+        labels[i] = dat[i].label
+        xcoords[i] = dat[i].centroid[0]
+        ycoords[i] = dat[i].centroid[1]
+        area[i] = dat[i].area
+        major_axis_length[i] = dat[i].major_axis_length
+        minor_axis_length[i] = dat[i].minor_axis_length
+        eccentricity[i] = dat[i].eccentricity
+        solidity[i] = dat[i].solidity
+        extent[i] = dat[i].extent
+        orientation[i] = dat[i].orientation
+        # By clearing the reference to each RegionProperties object, we allow it
+        # and its cache to be garbage collected immediately. Otherwise memory
+        # usage creeps up needlessly while this function is executing.
+        dat[i] = None
+
+    IDs = {
+        "CellID": labels,
+        "X_position": xcoords,
+        "Y_position": ycoords,
+        "Area": area,
+        "MajorAxisLength": major_axis_length,
+        "MinorAxisLength": minor_axis_length,
+        "Eccentricity": eccentricity,
+        "Solidity": solidity,
+        "Extent": extent,
+        "Orientation": orientation,
+    }
+
     return IDs
 
 
