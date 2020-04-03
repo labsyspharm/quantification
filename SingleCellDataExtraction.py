@@ -9,7 +9,6 @@ import numpy as np
 import os
 import skimage.measure as measure
 from pathlib import Path
-import tracemalloc
 
 
 
@@ -132,15 +131,12 @@ def MaskZstack(mask_loaded,image,channel_names_loaded):
     #Iterate through the z stack to extract intensities
     list_of_chan = []
     #Get the z channel and the associated channel name from list of channel names
-    tracemalloc.start()
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
         image_loaded_z = PrepareData(image,z)
         #Use the above information to mask z stack
         list_of_chan.append(MaskChannel(mask_loaded,image_loaded_z))
         #Display memory monitoring --- next 3 lines can be commented
-        current, peak = tracemalloc.get_traced_memory()
-        print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
         print("Finished "+str(z))
     #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
     dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
@@ -191,18 +187,9 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
     export single-cell data from image masks"""
 
     print("Extracting single-cell data for "+str(image)+'...')
-    #Start memory monitoring --- next line can be commented
-    tracemalloc.start()
-    # ---
 
     #Run the ExtractSingleCells function for this image
     ExtractSingleCells(mask,image,channel_names,output)
-    
-    #Display memory monitoring --- next 3 lines can be commented
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
-    tracemalloc.stop()
-    # ---
 
     #Print update
     im_full_name = os.path.basename(image)
