@@ -136,7 +136,7 @@ def MaskZstack(mask_loaded,image,channel_names_loaded):
         image_loaded_z = PrepareData(image,z)
         #Use the above information to mask z stack
         list_of_chan.append(MaskChannel(mask_loaded,image_loaded_z))
-        #Display memory monitoring --- next 3 lines can be commented
+        #Print progress
         print("Finished "+str(z))
     #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
     dat = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,list_of_chan)))],axis=1)
