@@ -92,7 +92,7 @@ def PrepareData(image,z):
         if  image.endswith(('.ome.tif','.ome.tiff')):
             #Read the image
             image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
-            #print('OME TIF(F) found') 
+            #print('OME TIF(F) found')
         else:
             #Read the image
             image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
@@ -171,10 +171,24 @@ def ExtractSingleCells(mask,image,channel_names,output):
     channel_names_loaded.columns = ["marker"]
     #Convert the channel names to a list
     channel_names_loaded = list(channel_names_loaded.marker.values)
+    #Check for unique marker names -- create new list to store new names
+    channel_names_loaded_checked = []
+    for idx,val in enumerate(channel_names_loaded):
+        #Check for unique value
+        if channel_names_loaded.count(val) > 1:
+            #If unique count greater than one, add suffix
+            channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded[:idx].count(val) + 1))
+        else:
+            #Otherwise, leave channel name
+            channel_names_loaded_checked.append(val)
+
+    #Clear small memory amount by clearing old channel names
+    channel_names_loaded = None
+
     #Read the mask
     mask_loaded = skimage.io.imread(mask,plugin='tifffile')
 
-    scdata_z = MaskZstack(mask_loaded,image,channel_names_loaded)
+    scdata_z = MaskZstack(mask_loaded,image,channel_names_loaded_checked)
     #Write the singe cell data to a csv file using the image name
 
     im_full_name = os.path.basename(image)
@@ -195,5 +209,3 @@ def MultiExtractSingleCells(mask,image,channel_names,output):
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
     print("Finished "+str(im_name))
-
-
