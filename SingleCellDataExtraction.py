@@ -166,11 +166,10 @@ def ExtractSingleCells(mask,image,channel_names,output):
     output = Path(output)
 
     #Read the channels names
-    channel_names_loaded = pd.read_csv(channel_names,header=None)
-    #Add a column index for ease
-    channel_names_loaded.columns = ["marker"]
+    channel_names_loaded = pd.read_csv(channel_names)   
     #Convert the channel names to a list
-    channel_names_loaded = list(channel_names_loaded.marker.values)
+    channel_names_loaded_list = list(channel_names_loaded.marker_name)
+    
     #Check for unique marker names -- create new list to store new names
     channel_names_loaded_checked = []
     for idx,val in enumerate(channel_names_loaded):
