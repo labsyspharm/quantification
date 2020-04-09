@@ -166,23 +166,41 @@ def ExtractSingleCells(mask,image,channel_names,output):
     output = Path(output)
 
     #Read the channels names
-    channel_names_loaded = pd.read_csv(channel_names)   
-    #Convert the channel names to a list
+    channel_names_loaded = pd.read_csv(channel_names)
+    #column "marker_name" should always be in the csv, convert to list
     channel_names_loaded_list = list(channel_names_loaded.marker_name)
-    
     #Check for unique marker names -- create new list to store new names
     channel_names_loaded_checked = []
-    for idx,val in enumerate(channel_names_loaded):
-        #Check for unique value
-        if channel_names_loaded.count(val) > 1:
-            #If unique count greater than one, add suffix
-            channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded[:idx].count(val) + 1))
-        else:
-            #Otherwise, leave channel name
-            channel_names_loaded_checked.append(val)
+
+    #Check if CyCIF csv structure by looking for cycle number and marker name
+    #If the list of csv columns contain the given strings, assume CyCIF structure
+    if all(any(x in y for y in list(channel_names_loaded.columns.values)) for x in ["marker_name","cycle_number"]):
+        #Iterate through marker names list
+        for idx,val in enumerate(channel_names_loaded_list):
+            #Check for unique value
+            if channel_names_loaded_list.count(val) > 1:
+                #If unique count greater than one, get cycle number
+                cycle_num = str(channel_names_loaded.iloc[idx].cycle_number)
+                #If unique count greater than one, add suffix
+                channel_names_loaded_checked.append(val + "_"+ cycle_num)
+            else:
+                #Otherwise, leave channel name
+                channel_names_loaded_checked.append(val)
+
+    #Otherwise,assume the csv only contains single column "marker_name"
+    else:
+        #Iterate through marker names list and check for unique names
+        for idx,val in enumerate(channel_names_loaded_list):
+            #Check for unique value
+            if channel_names_loaded_list.count(val) > 1:
+                #If unique count greater than one, add suffix
+                channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded_list[:idx].count(val) + 1))
+            else:
+                #Otherwise, leave channel name
+                channel_names_loaded_checked.append(val)
 
     #Clear small memory amount by clearing old channel names
-    channel_names_loaded = None
+    channel_names_loaded, channel_names_loaded_list = None, None
 
     #Read the mask
     mask_loaded = skimage.io.imread(mask,plugin='tifffile')
