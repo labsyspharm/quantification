@@ -166,30 +166,41 @@ def ExtractSingleCells(mask,image,channel_names,output):
     output = Path(output)
 
     #Check if header available
-    sniffer = csv.Sniffer()
-    sniffer.has_header(open(channel_names).readline())
+    #sniffer = csv.Sniffer()
+    #sniffer.has_header(open(channel_names).readline())
     #If header not available
-    if not sniffer:
+    #if not sniffer:
         #If header available
-        channel_names_loaded = pd.read_csv(channel_names)
+        #channel_names_loaded = pd.read_csv(channel_names)
+        #channel_names_loaded_list = list(channel_names_loaded.marker_name)
+    #else:
+        #print("negative")
+        #old one column version
+        #channel_names_loaded = pd.read_csv(channel_names,header=None)
+        #Add a column index for ease
+        #channel_names_loaded.columns = ["marker"]
+        #channel_names_loaded = list(channel_names_loaded.marker.values)
+
+    #Read csv channel names
+    channel_names_loaded = pd.read_csv(channel_names)
+    #Check for size of columns
+    if channel_names_loaded.shape[1] > 1:
+        #Get the marker_name column if more than one column (CyCIF structure)
         channel_names_loaded_list = list(channel_names_loaded.marker_name)
     else:
-        print("negative")
-        #old one column version
-        channel_names_loaded = pd.read_csv(channel_names,header=None)
-        #Add a column index for ease
+        #old one column version -- re-read the csv file and add column name
+        channel_names_loaded = pd.read_csv(channel_names, header = None)
+        #Add a column index for ease and for standardization
         channel_names_loaded.columns = ["marker"]
-        channel_names_loaded = list(channel_names_loaded.marker.values)
-
-
+        channel_names_loaded_list = list(channel_names_loaded.marker)
 
     #Check for unique marker names -- create new list to store new names
     channel_names_loaded_checked = []
-    for idx,val in enumerate(channel_names_loaded):
+    for idx,val in enumerate(channel_names_loaded_list):
         #Check for unique value
-        if channel_names_loaded.count(val) > 1:
+        if channel_names_loaded_list.count(val) > 1:
             #If unique count greater than one, add suffix
-            channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded[:idx].count(val) + 1))
+            channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded_list[:idx].count(val) + 1))
         else:
             #Otherwise, leave channel name
             channel_names_loaded_checked.append(val)
