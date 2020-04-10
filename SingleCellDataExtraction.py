@@ -167,8 +167,7 @@ def ExtractSingleCells(mask,image,channel_names,output):
 
     #Check if header available
     sniffer = csv.Sniffer()
-    sample_bytes = 32 #pick any number to check
-    sniffer.has_header(open(channel_names).read(sample_bytes))
+    sniffer.has_header(open(channel_names).readline())
     #If header not available
     if not sniffer:
         #old one column version
