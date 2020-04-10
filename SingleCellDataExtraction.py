@@ -9,7 +9,7 @@ import numpy as np
 import os
 import skimage.measure as measure
 from pathlib import Path
-
+import csv
 
 
 def MaskChannel(mask_loaded,image_loaded_z):
@@ -165,39 +165,33 @@ def ExtractSingleCells(mask,image,channel_names,output):
     #Create pathlib object for output
     output = Path(output)
 
-    #Read the channels names
-    channel_names_loaded = pd.read_csv(channel_names)
-    #column "marker_name" should always be in the csv, convert to list
-    channel_names_loaded_list = list(channel_names_loaded.marker_name)
+    #Check if header available
+    sniffer = csv.Sniffer()
+    sample_bytes = 32 #pick any number to check
+    sniffer.has_header(open(channel_names).read(sample_bytes))
+    #If header not available
+    if not sniffer
+        #old one column version
+        channel_names_loaded = pd.read_csv(channel_names,header=None)
+        #Add a column index for ease
+        channel_names_loaded.columns = ["marker"]
+        channel_names_loaded = list(channel_names_loaded.marker.values)
+    else
+    #If header available
+        channel_names_loaded = pd.read_csv(channel_names)
+        channel_names_loaded_list = list(channel_names_loaded.marker_name)
+
+
     #Check for unique marker names -- create new list to store new names
     channel_names_loaded_checked = []
-
-    #Check if CyCIF csv structure by looking for cycle number and marker name
-    #If the list of csv columns contain the given strings, assume CyCIF structure
-    if all(any(x in y for y in list(channel_names_loaded.columns.values)) for x in ["marker_name","cycle_number"]):
-        #Iterate through marker names list
-        for idx,val in enumerate(channel_names_loaded_list):
-            #Check for unique value
-            if channel_names_loaded_list.count(val) > 1:
-                #If unique count greater than one, get cycle number
-                cycle_num = str(channel_names_loaded.iloc[idx].cycle_number)
-                #If unique count greater than one, add suffix
-                channel_names_loaded_checked.append(val + "_"+ cycle_num)
-            else:
-                #Otherwise, leave channel name
-                channel_names_loaded_checked.append(val)
-
-    #Otherwise,assume the csv only contains single column "marker_name"
-    else:
-        #Iterate through marker names list and check for unique names
-        for idx,val in enumerate(channel_names_loaded_list):
-            #Check for unique value
-            if channel_names_loaded_list.count(val) > 1:
-                #If unique count greater than one, add suffix
-                channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded_list[:idx].count(val) + 1))
-            else:
-                #Otherwise, leave channel name
-                channel_names_loaded_checked.append(val)
+    for idx,val in enumerate(channel_names_loaded):
+        #Check for unique value
+        if channel_names_loaded.count(val) > 1:
+            #If unique count greater than one, add suffix
+            channel_names_loaded_checked.append(val + "_"+ str(channel_names_loaded[:idx].count(val) + 1))
+        else:
+            #Otherwise, leave channel name
+            channel_names_loaded_checked.append(val)
 
     #Clear small memory amount by clearing old channel names
     channel_names_loaded, channel_names_loaded_list = None, None
