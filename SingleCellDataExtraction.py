@@ -170,13 +170,13 @@ def ExtractSingleCells(mask,image,channel_names,output):
     sample_bytes = 32 #pick any number to check
     sniffer.has_header(open(channel_names).read(sample_bytes))
     #If header not available
-    if not sniffer
+    if not sniffer:
         #old one column version
         channel_names_loaded = pd.read_csv(channel_names,header=None)
         #Add a column index for ease
         channel_names_loaded.columns = ["marker"]
         channel_names_loaded = list(channel_names_loaded.marker.values)
-    else
+    else:
     #If header available
         channel_names_loaded = pd.read_csv(channel_names)
         channel_names_loaded_list = list(channel_names_loaded.marker_name)
