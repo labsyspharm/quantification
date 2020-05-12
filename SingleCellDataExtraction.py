@@ -50,8 +50,8 @@ def MaskIDs(mask):
 
     for i in range(n):
         labels[i] = dat[i].label
-        xcoords[i] = dat[i].centroid[0]
-        ycoords[i] = dat[i].centroid[1]
+        xcoords[i] = dat[i].centroid[1]
+        ycoords[i] = dat[i].centroid[0]
         area[i] = dat[i].area
         major_axis_length[i] = dat[i].major_axis_length
         minor_axis_length[i] = dat[i].minor_axis_length
