@@ -16,6 +16,8 @@ python CommandSingleCellExtraction.py --mask ./segmentation/cellMask.tif --image
 
 # Main developer
 Denis Schapiro (https://github.com/DenisSch)
+
 Joshua Hess (https://github.com/JoshuaHess12)
+
 Jeremy Muhlich (https://github.com/jmuhlich)
 
