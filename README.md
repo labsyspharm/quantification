@@ -3,7 +3,7 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
 
 **CommandSingleCellExtraction.py**:
 
-* mask: Path to directory where masks are stored (Ex: ./segmentation/cellMask.tif)
+* masks: Paths to where masks are stored (Ex: ./segmentation/cellMask.tif)
 
 * image: Path to image(s) for quantification.  (Ex: ./registration/*.h5) -> works with .h(df)5 or .tif(f)
 
@@ -12,7 +12,7 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
 * channel_names: csv file containing the channel names for the z-stack (Ex: ./my_channels.csv)
 
 # Run script
-python CommandSingleCellExtraction.py --mask ./segmentation/cellMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv
+python CommandSingleCellExtraction.py --masks ./segmentation/cellMask.tif ./segmentation/membraneMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv
 
 # Main developer
 Denis Schapiro (https://github.com/DenisSch)
