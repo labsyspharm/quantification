@@ -14,7 +14,8 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
 # Run script
 python CommandSingleCellExtraction.py --mask ./segmentation/cellMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv
 
-# Developer
-Joshua Hess (https://github.com/JoshuaHess12)
-
+# Main developer
 Denis Schapiro (https://github.com/DenisSch)
+Joshua Hess (https://github.com/JoshuaHess12)
+Jeremy Muhlich (https://github.com/jmuhlich)
+
