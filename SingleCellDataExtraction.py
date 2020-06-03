@@ -66,8 +66,10 @@ def MaskIDs(mask):
 
     IDs = {
         "CellID": labels,
-        "X_position": xcoords,
-        "Y_position": ycoords,
+        "X_centroid": xcoords,
+        "Y_centroid": ycoords,
+        "column_centroid": xcoords,
+        "row_centroid": ycoords,
         "Area": area,
         "MajorAxisLength": major_axis_length,
         "MinorAxisLength": minor_axis_length,
@@ -143,8 +145,10 @@ def MaskZstack(mask_loaded,image,channel_names_loaded):
     #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
     cols = list(dat.columns.values)
     #Reorder the list (Move xy position to end with spatial information)
-    cols.append(cols.pop(cols.index("X_position")))
-    cols.append(cols.pop(cols.index("Y_position")))
+    cols.append(cols.pop(cols.index("X_centroid")))
+    cols.append(cols.pop(cols.index("Y_centroid")))
+    cols.append(cols.pop(cols.index("column_centroid")))
+    cols.append(cols.pop(cols.index("row_centroid")))
     cols.append(cols.pop(cols.index("Area")))
     cols.append(cols.pop(cols.index("MajorAxisLength")))
     cols.append(cols.pop(cols.index("MinorAxisLength")))
