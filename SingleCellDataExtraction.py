@@ -27,7 +27,7 @@ def MaskChannel(mask_loaded,image_loaded_z):
     return intensity_z
 
 
-def MaskIDs(mask,get_spatial=True):
+def MaskIDs(mask):
     """This function will extract the CellIDs and the XY positions for each
     cell based on that cells centroid
 
@@ -38,58 +38,46 @@ def MaskIDs(mask,get_spatial=True):
 
     # Pre-allocate numpy arrays for all properties we'll calculate.
     labels = np.empty(n, int)
-    #Check to see if getting spatial features
-    if get_spatial:
-        xcoords = np.empty(n)
-        ycoords = np.empty(n)
-        area = np.empty(n, int)
-        minor_axis_length = np.empty(n)
-        major_axis_length = np.empty(n)
-        eccentricity = np.empty(n)
-        solidity = np.empty(n)
-        extent = np.empty(n)
-        orientation = np.empty(n)
+    xcoords = np.empty(n)
+    ycoords = np.empty(n)
+    area = np.empty(n, int)
+    minor_axis_length = np.empty(n)
+    major_axis_length = np.empty(n)
+    eccentricity = np.empty(n)
+    solidity = np.empty(n)
+    extent = np.empty(n)
+    orientation = np.empty(n)
 
-        for i in range(n):
-            labels[i] = dat[i].label
-            xcoords[i] = dat[i].centroid[1]
-            ycoords[i] = dat[i].centroid[0]
-            area[i] = dat[i].area
-            major_axis_length[i] = dat[i].major_axis_length
-            minor_axis_length[i] = dat[i].minor_axis_length
-            eccentricity[i] = dat[i].eccentricity
-            solidity[i] = dat[i].solidity
-            extent[i] = dat[i].extent
-            orientation[i] = dat[i].orientation
-            # By clearing the reference to each RegionProperties object, we allow it
-            # and its cache to be garbage collected immediately. Otherwise memory
-            # usage creeps up needlessly while this function is executing.
-            dat[i] = None
+    for i in range(n):
+        labels[i] = dat[i].label
+        xcoords[i] = dat[i].centroid[1]
+        ycoords[i] = dat[i].centroid[0]
+        area[i] = dat[i].area
+        major_axis_length[i] = dat[i].major_axis_length
+        minor_axis_length[i] = dat[i].minor_axis_length
+        eccentricity[i] = dat[i].eccentricity
+        solidity[i] = dat[i].solidity
+        extent[i] = dat[i].extent
+        orientation[i] = dat[i].orientation
+        # By clearing the reference to each RegionProperties object, we allow it
+        # and its cache to be garbage collected immediately. Otherwise memory
+        # usage creeps up needlessly while this function is executing.
+        dat[i] = None
 
-        IDs = {
-            "CellID": labels,
-            "X_centroid": xcoords,
-            "Y_centroid": ycoords,
-            "column_centroid": xcoords,
-            "row_centroid": ycoords,
-            "Area": area,
-            "MajorAxisLength": major_axis_length,
-            "MinorAxisLength": minor_axis_length,
-            "Eccentricity": eccentricity,
-            "Solidity": solidity,
-            "Extent": extent,
-            "Orientation": orientation,
-        }
-
-    #If not getting spatial, only use the labels of cells
-    else:
-        for i in range(n):
-            labels[i] = dat[i].label
-            dat[i] = None
-
-        IDs = {
-            "CellID": labels,
-        }
+    IDs = {
+        "CellID": labels,
+        "X_centroid": xcoords,
+        "Y_centroid": ycoords,
+        "column_centroid": xcoords,
+        "row_centroid": ycoords,
+        "Area": area,
+        "MajorAxisLength": major_axis_length,
+        "MinorAxisLength": minor_axis_length,
+        "Eccentricity": eccentricity,
+        "Solidity": solidity,
+        "Extent": extent,
+        "Orientation": orientation,
+    }
 
     return IDs
 
@@ -132,7 +120,7 @@ def PrepareData(image,z):
     return image_loaded_z
 
 
-def MaskZstack(masks_loaded,image,channel_names_loaded,get_spatial=True):
+def MaskZstack(masks_loaded,image,channel_names_loaded):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -142,10 +130,10 @@ def MaskZstack(masks_loaded,image,channel_names_loaded,get_spatial=True):
 
     #Get the names of the keys for the masks dictionary
     mask_names = list(masks_loaded.keys())
-    #Get the CellIDs for this dataset by using only a single mask
-    IDs = pd.DataFrame(MaskIDs(masks_loaded[mask_names[0]],get_spatial))
-    #Iterate through the z stack to extract intensities
-    list_of_chan = []
+    #Get the CellIDs for this dataset by using only a single mask (first mask)
+    IDs = pd.DataFrame(MaskIDs(masks_loaded[mask_names[0]]))
+    #Create empty dictionary to store channel results per mask
+    dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
     for z in range(len(channel_names_loaded)):
         #Run the data Prep function
@@ -154,39 +142,49 @@ def MaskZstack(masks_loaded,image,channel_names_loaded,get_spatial=True):
         #Iterate through number of masks to extract single cell data
         for nm in range(len(mask_names)):
             #Use the above information to mask z stack
-            list_of_chan.append(MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z))
+            dict_of_chan[mask_names[nm]].append(MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z))
         #Print progress
         print("Finished "+str(z))
 
-    #Create new list of channel names by adding suffixes to og channel names
-    new_names = [channel_names_loaded[i]+"_"+str(j) for i in range(len(channel_names_loaded)) for j in mask_names]
+    #Iterate through the rest of the masks to modify names of channels and convert to data table
+    for nm in mask_names:
+        #Check if this is the first mask
+        if nm == mask_names[0]:
+            #Create channel names for this mask
+            new_names = [channel_names_loaded[i]+"_"+str(nm) for i in range(len(channel_names_loaded))]
+            #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
+            dict_of_chan[nm] = pd.concat([IDs,pd.DataFrame(dict(zip(new_names,dict_of_chan[nm])))],axis=1)
+            #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
+            cols = list(dict_of_chan[nm].columns.values)
+            #Reorder the list (Move xy position to end with spatial information)
+            cols.append(cols.pop(cols.index("X_centroid")))
+            cols.append(cols.pop(cols.index("Y_centroid")))
+            cols.append(cols.pop(cols.index("column_centroid")))
+            cols.append(cols.pop(cols.index("row_centroid")))
+            cols.append(cols.pop(cols.index("Area")))
+            cols.append(cols.pop(cols.index("MajorAxisLength")))
+            cols.append(cols.pop(cols.index("MinorAxisLength")))
+            cols.append(cols.pop(cols.index("Eccentricity")))
+            cols.append(cols.pop(cols.index("Solidity")))
+            cols.append(cols.pop(cols.index("Extent")))
+            cols.append(cols.pop(cols.index("Orientation")))
+            #Reindex the dataframe with new order
+            dict_of_chan[nm] = dict_of_chan[nm].reindex(columns=cols)
+        #Otherwise, add no spatial information
+        else:
+            #Create channel names for this mask
+            new_names = [channel_names_loaded[i]+"_"+str(nm) for i in range(len(channel_names_loaded))]
+            #Use the above information to mask z stack
+            dict_of_chan[nm] = pd.DataFrame(dict(zip(new_names,dict_of_chan[nm])))
 
-    #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
-    dat = pd.concat([IDs,pd.DataFrame(dict(zip(new_names,list_of_chan)))],axis=1)
+    #Concatenate all data from all masks to return
+    dat = pd.concat([dict_of_chan[nm] for nm in mask_names],axis=1)
 
-    #Check to see if getting spatial information
-    if get_spatial:
-        #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
-        cols = list(dat.columns.values)
-        #Reorder the list (Move xy position to end with spatial information)
-        cols.append(cols.pop(cols.index("X_centroid")))
-        cols.append(cols.pop(cols.index("Y_centroid")))
-        cols.append(cols.pop(cols.index("column_centroid")))
-        cols.append(cols.pop(cols.index("row_centroid")))
-        cols.append(cols.pop(cols.index("Area")))
-        cols.append(cols.pop(cols.index("MajorAxisLength")))
-        cols.append(cols.pop(cols.index("MinorAxisLength")))
-        cols.append(cols.pop(cols.index("Eccentricity")))
-        cols.append(cols.pop(cols.index("Solidity")))
-        cols.append(cols.pop(cols.index("Extent")))
-        cols.append(cols.pop(cols.index("Orientation")))
-        #Reindex the dataframe with new order
-        dat = dat.reindex(columns=cols)
     #Return the dataframe
     return dat
 
 
-def ExtractSingleCells(masks,image,channel_names,output,get_spatial=True):
+def ExtractSingleCells(masks,image,channel_names,output):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -244,7 +242,7 @@ def ExtractSingleCells(masks,image,channel_names,output,get_spatial=True):
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
-    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked,get_spatial)
+    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked)
     #Write the singe cell data to a csv file using the image name
 
     im_full_name = os.path.basename(image)
@@ -252,18 +250,14 @@ def ExtractSingleCells(masks,image,channel_names,output,get_spatial=True):
     scdata_z.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output,get_spatial=True):
+def MultiExtractSingleCells(masks,image,channel_names,output):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
     print("Extracting single-cell data for "+str(image)+'...')
 
-    #Check to see if more than one mask
-    if len(masks)>1:
-        #Set the get spatial attribute to False
-        get_spatial=False
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output,get_spatial)
+    ExtractSingleCells(masks,image,channel_names,output)
 
     #Print update
     im_full_name = os.path.basename(image)
