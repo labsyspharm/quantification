@@ -1,6 +1,6 @@
 name: quantification
 dependencies:
-  - scikit-image 
+  - scikit-image>=0.18.0
   - h5py
   - pandas
   - numpy
