@@ -89,7 +89,7 @@ def PrepareData(image,z):
     image_path = Path(image)
 
     #Check to see if image tif(f)
-    if image_path.suffix == '.tiff' or image_path.suffix == '.tif':
+    if image_path.suffix == '.tiff' or image_path.suffix == '.tif' or image_path.suffix == '.btf':
         #Check to see if the image is ome.tif(f)
         if  image.endswith(('.ome.tif','.ome.tiff')):
             #Read the image
