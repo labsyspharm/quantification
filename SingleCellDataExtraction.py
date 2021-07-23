@@ -10,6 +10,7 @@ import os
 import skimage.measure as measure
 from pathlib import Path
 import csv
+from scipy.spatial import KDTree
 
 
 def MaskChannel(mask_loaded,image_loaded_z):
@@ -119,7 +120,6 @@ def PrepareData(image,z):
     #Return the objects
     return image_loaded_z
 
-
 def MaskZstack(masks_loaded,image,channel_names_loaded):
     """This function will extract the stats for each cell mask through each channel
     in the input image
@@ -130,8 +130,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded):
 
     #Get the names of the keys for the masks dictionary
     mask_names = list(masks_loaded.keys())
-    #Get the CellIDs for this dataset by using only a single mask (first mask)
-    IDs = pd.DataFrame(MaskIDs(masks_loaded[mask_names[0]]))
+
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
@@ -148,41 +147,32 @@ def MaskZstack(masks_loaded,image,channel_names_loaded):
 
     #Iterate through the rest of the masks to modify names of channels and convert to data table
     for nm in mask_names:
-        #Check if this is the first mask
-        if nm == mask_names[0]:
-            #Create channel names for this mask
-            new_names = [channel_names_loaded[i]+"_"+str(nm) for i in range(len(channel_names_loaded))]
-            #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
-            dict_of_chan[nm] = pd.concat([IDs,pd.DataFrame(dict(zip(new_names,dict_of_chan[nm])))],axis=1)
-            #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
-            cols = list(dict_of_chan[nm].columns.values)
-            #Reorder the list (Move xy position to end with spatial information)
-            cols.append(cols.pop(cols.index("X_centroid")))
-            cols.append(cols.pop(cols.index("Y_centroid")))
-            cols.append(cols.pop(cols.index("column_centroid")))
-            cols.append(cols.pop(cols.index("row_centroid")))
-            cols.append(cols.pop(cols.index("Area")))
-            cols.append(cols.pop(cols.index("MajorAxisLength")))
-            cols.append(cols.pop(cols.index("MinorAxisLength")))
-            cols.append(cols.pop(cols.index("Eccentricity")))
-            cols.append(cols.pop(cols.index("Solidity")))
-            cols.append(cols.pop(cols.index("Extent")))
-            cols.append(cols.pop(cols.index("Orientation")))
-            #Reindex the dataframe with new order
-            dict_of_chan[nm] = dict_of_chan[nm].reindex(columns=cols)
-        #Otherwise, add no spatial information
-        else:
-            #Create channel names for this mask
-            new_names = [channel_names_loaded[i]+"_"+str(nm) for i in range(len(channel_names_loaded))]
-            #Use the above information to mask z stack
-            dict_of_chan[nm] = pd.DataFrame(dict(zip(new_names,dict_of_chan[nm])))
+        #Get the CellIDs for this dataset by using only a single mask (first mask)
+        IDs = pd.DataFrame(MaskIDs(masks_loaded[nm]))
+        #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
+        dict_of_chan[nm] = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,dict_of_chan[nm])))],axis=1)
+        #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
+        cols = list(dict_of_chan[nm].columns.values)
+        #Reorder the list (Move xy position to end with spatial information)
+        cols.append(cols.pop(cols.index("X_centroid")))
+        cols.append(cols.pop(cols.index("Y_centroid")))
+        cols.append(cols.pop(cols.index("column_centroid")))
+        cols.append(cols.pop(cols.index("row_centroid")))
+        cols.append(cols.pop(cols.index("Area")))
+        cols.append(cols.pop(cols.index("MajorAxisLength")))
+        cols.append(cols.pop(cols.index("MinorAxisLength")))
+        cols.append(cols.pop(cols.index("Eccentricity")))
+        cols.append(cols.pop(cols.index("Solidity")))
+        cols.append(cols.pop(cols.index("Extent")))
+        cols.append(cols.pop(cols.index("Orientation")))
+        #Reindex the dataframe with new order
+        dict_of_chan[nm] = dict_of_chan[nm].reindex(columns=cols)
 
     #Concatenate all data from all masks to return
-    dat = pd.concat([dict_of_chan[nm] for nm in mask_names],axis=1)
+    #dat = pd.concat([dict_of_chan[nm] for nm in mask_names],axis=1)
 
     #Return the dataframe
-    return dat
-
+    return dict_of_chan
 
 def ExtractSingleCells(masks,image,channel_names,output):
     """Function for extracting single cell information from input
@@ -247,7 +237,15 @@ def ExtractSingleCells(masks,image,channel_names,output):
 
     im_full_name = os.path.basename(image)
     im_name = im_full_name.split('.')[0]
-    scdata_z.to_csv(str(Path(os.path.join(str(output),str(im_name+".csv")))),index=False)
+
+    # iterate through each mask and export csv with mask name as suffix
+    for k,v in scdata_z.items():
+        # export the csv for this mask name
+        scdata_z[k].to_csv(
+                            str(Path(os.path.join(str(output),
+                            str(im_name+"_{}"+".csv").format(k)))),
+                            index=False
+                            )
 
 
 def MultiExtractSingleCells(masks,image,channel_names,output):
