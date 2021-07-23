@@ -10,6 +10,7 @@ import os
 import skimage.measure as measure
 from pathlib import Path
 import csv
+from scipy.spatial import KDTree
 
 
 def MaskChannel(mask_loaded,image_loaded_z):
@@ -129,8 +130,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded):
 
     #Get the names of the keys for the masks dictionary
     mask_names = list(masks_loaded.keys())
-    #Get the CellIDs for this dataset by using only a single mask (first mask)
-    IDs = pd.DataFrame(MaskIDs(masks_loaded[mask_names[0]]))
+
     #Create empty dictionary to store channel results per mask
     dict_of_chan = {m_name: [] for m_name in mask_names}
     #Get the z channel and the associated channel name from list of channel names
@@ -147,6 +147,8 @@ def MaskZstack(masks_loaded,image,channel_names_loaded):
 
     #Iterate through the rest of the masks to modify names of channels and convert to data table
     for nm in mask_names:
+        #Get the CellIDs for this dataset by using only a single mask (first mask)
+        IDs = pd.DataFrame(MaskIDs(masks_loaded[nm]))
         #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
         dict_of_chan[nm] = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,dict_of_chan[nm])))],axis=1)
         #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
