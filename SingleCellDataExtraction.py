@@ -58,8 +58,6 @@ def MaskIDs(mask, mask_props=None):
         "CellID": "label",
         "X_centroid": "centroid-1",
         "Y_centroid": "centroid-0",
-        "column_centroid": "centroid-1",
-        "row_centroid": "centroid-0",
         "Area": "area",
         "MajorAxisLength": "major_axis_length",
         "MinorAxisLength": "minor_axis_length",
