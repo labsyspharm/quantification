@@ -19,6 +19,8 @@ def gini_index(mask, intensity):
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
 
+def median_intensity(mask, intensity):
+    return np.median(intensity[mask])
 
 def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["mean_intensity"]):
     """Function for quantifying a single channel image
