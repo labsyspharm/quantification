@@ -22,7 +22,7 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
     See list at https://scikit-image.org/docs/dev/api/skimage.measure.html#regionprops
     Additionally available is gini_index, which calculates a single number
     between 0 and 1, representing how unequal the signal is distributed in each region.
-    See https://en.wikipedia.org/wiki/Gini_coefficient
+    See https://en.wikipedia.org/wiki/Gini_coefficient. For example, to calculate the median intensity, specify `--intensity_props median_intensity`.
 
 # Run script
 `python CommandSingleCellExtraction.py --masks ./segmentation/cellMask.tif ./segmentation/membraneMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv`
