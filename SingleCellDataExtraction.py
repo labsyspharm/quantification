@@ -8,79 +8,70 @@ import pandas as pd
 import numpy as np
 import os
 import skimage.measure as measure
+
 from pathlib import Path
-import csv
-from scipy.spatial import KDTree
 
 
-def MaskChannel(mask_loaded,image_loaded_z):
+def gini_index(mask, intensity):
+    x = intensity[mask]
+    sorted_x = np.sort(x)
+    n = len(x)
+    cumx = np.cumsum(sorted_x, dtype=float)
+    return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
+
+def median_intensity(mask, intensity):
+    return np.median(intensity[mask])
+
+def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["mean_intensity"]):
     """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
     for the given channel for each cell"""
-    dat = measure.regionprops(mask_loaded, image_loaded_z)
-    n = len(dat)
-    intensity_z = np.empty(n)
-    for i in range(n):
-        intensity_z[i] = dat[i].mean_intensity
-        # Clear reference to avoid memory leak -- see MaskIDs for explanation.
-        dat[i] = None
-    return intensity_z
+    # Look for regionprops in skimage
+    builtin_props = set(intensity_props).intersection(measure._regionprops.PROP_VALS)
+    # Otherwise look for them in this module
+    extra_props = set(intensity_props).difference(measure._regionprops.PROP_VALS)
+    dat = measure.regionprops_table(
+        mask_loaded, image_loaded_z,
+        properties = tuple(builtin_props),
+        extra_properties = [globals()[n] for n in extra_props]
+    )
+    return dat
 
 
-def MaskIDs(mask):
+def MaskIDs(mask, mask_props=None):
     """This function will extract the CellIDs and the XY positions for each
     cell based on that cells centroid
 
     Returns a dictionary object"""
 
-    dat = measure.regionprops(mask)
-    n = len(dat)
+    all_mask_props = set(["label", "centroid", "area", "major_axis_length", "minor_axis_length", "eccentricity", "solidity", "extent", "orientation"])
+    if mask_props is not None:
+        all_mask_props = all_mask_props.union(mask_props)
 
-    # Pre-allocate numpy arrays for all properties we'll calculate.
-    labels = np.empty(n, int)
-    xcoords = np.empty(n)
-    ycoords = np.empty(n)
-    area = np.empty(n, int)
-    minor_axis_length = np.empty(n)
-    major_axis_length = np.empty(n)
-    eccentricity = np.empty(n)
-    solidity = np.empty(n)
-    extent = np.empty(n)
-    orientation = np.empty(n)
+    dat = measure.regionprops_table(
+        mask,
+        properties=all_mask_props
+    )
 
-    for i in range(n):
-        labels[i] = dat[i].label
-        xcoords[i] = dat[i].centroid[1]
-        ycoords[i] = dat[i].centroid[0]
-        area[i] = dat[i].area
-        major_axis_length[i] = dat[i].major_axis_length
-        minor_axis_length[i] = dat[i].minor_axis_length
-        eccentricity[i] = dat[i].eccentricity
-        solidity[i] = dat[i].solidity
-        extent[i] = dat[i].extent
-        orientation[i] = dat[i].orientation
-        # By clearing the reference to each RegionProperties object, we allow it
-        # and its cache to be garbage collected immediately. Otherwise memory
-        # usage creeps up needlessly while this function is executing.
-        dat[i] = None
-
-    IDs = {
-        "CellID": labels,
-        "X_centroid": xcoords,
-        "Y_centroid": ycoords,
-        "column_centroid": xcoords,
-        "row_centroid": ycoords,
-        "Area": area,
-        "MajorAxisLength": major_axis_length,
-        "MinorAxisLength": minor_axis_length,
-        "Eccentricity": eccentricity,
-        "Solidity": solidity,
-        "Extent": extent,
-        "Orientation": orientation,
+    name_map = {
+        "CellID": "label",
+        "X_centroid": "centroid-1",
+        "Y_centroid": "centroid-0",
+        "Area": "area",
+        "MajorAxisLength": "major_axis_length",
+        "MinorAxisLength": "minor_axis_length",
+        "Eccentricity": "eccentricity",
+        "Solidity": "solidity",
+        "Extent": "extent",
+        "Orientation": "orientation",
     }
+    for new_name, old_name in name_map.items():
+        dat[new_name] = dat[old_name]
+    for old_name in set(name_map.values()):
+        del dat[old_name]
 
-    return IDs
+    return dat
 
 
 def PrepareData(image,z):
@@ -120,7 +111,8 @@ def PrepareData(image,z):
     #Return the objects
     return image_loaded_z
 
-def MaskZstack(masks_loaded,image,channel_names_loaded):
+
+def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["mean_intensity"]):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -141,40 +133,55 @@ def MaskZstack(masks_loaded,image,channel_names_loaded):
         #Iterate through number of masks to extract single cell data
         for nm in range(len(mask_names)):
             #Use the above information to mask z stack
-            dict_of_chan[mask_names[nm]].append(MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z))
+            dict_of_chan[mask_names[nm]].append(
+                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props)
+            )
         #Print progress
         print("Finished "+str(z))
 
-    #Iterate through the rest of the masks to modify names of channels and convert to data table
+    # Column order according to histoCAT convention (Move xy position to end with spatial information)
+    last_cols = (
+        "X_centroid",
+        "Y_centroid",
+        "column_centroid",
+        "row_centroid",
+        "Area",
+        "MajorAxisLength",
+        "MinorAxisLength",
+        "Eccentricity",
+        "Solidity",
+        "Extent",
+        "Orientation",
+    )
+    def col_sort(x):
+        if x == "CellID":
+            return -2
+        try:
+            return last_cols.index(x)
+        except ValueError:
+            return -1
+
+    #Iterate through the masks and format quantifications for each mask and property
     for nm in mask_names:
-        #Get the CellIDs for this dataset by using only a single mask (first mask)
-        IDs = pd.DataFrame(MaskIDs(masks_loaded[nm]))
-        #Convert the channel names list and the list of intensity values to a dictionary and combine with CellIDs and XY
-        dict_of_chan[nm] = pd.concat([IDs,pd.DataFrame(dict(zip(channel_names_loaded,dict_of_chan[nm])))],axis=1)
-        #Get the name of the columns in the dataframe so we can reorder to histoCAT convention
-        cols = list(dict_of_chan[nm].columns.values)
-        #Reorder the list (Move xy position to end with spatial information)
-        cols.append(cols.pop(cols.index("X_centroid")))
-        cols.append(cols.pop(cols.index("Y_centroid")))
-        cols.append(cols.pop(cols.index("column_centroid")))
-        cols.append(cols.pop(cols.index("row_centroid")))
-        cols.append(cols.pop(cols.index("Area")))
-        cols.append(cols.pop(cols.index("MajorAxisLength")))
-        cols.append(cols.pop(cols.index("MinorAxisLength")))
-        cols.append(cols.pop(cols.index("Eccentricity")))
-        cols.append(cols.pop(cols.index("Solidity")))
-        cols.append(cols.pop(cols.index("Extent")))
-        cols.append(cols.pop(cols.index("Orientation")))
-        #Reindex the dataframe with new order
-        dict_of_chan[nm] = dict_of_chan[nm].reindex(columns=cols)
+        mask_dict = {}
+        # Mean intensity is default property, stored without suffix
+        mask_dict.update(
+            zip(channel_names_loaded, [x["mean_intensity"] for x in dict_of_chan[nm]])
+        )
+        # All other properties are suffixed with their names
+        for prop_n in set(dict_of_chan[nm][0].keys()).difference(["mean_intensity"]):
+            mask_dict.update(
+                zip([f"{n}_{prop_n}" for n in channel_names_loaded], [x[prop_n] for x in dict_of_chan[nm]])
+            )
+        # Get the cell IDs and mask properties
+        mask_properties = pd.DataFrame(MaskIDs(masks_loaded[nm], mask_props=mask_props))
+        mask_dict.update(mask_properties)
+        dict_of_chan[nm] = pd.DataFrame(mask_dict).reindex(columns=sorted(mask_dict.keys(), key=col_sort))
 
-    #Concatenate all data from all masks to return
-    #dat = pd.concat([dict_of_chan[nm] for nm in mask_names],axis=1)
-
-    #Return the dataframe
+    # Return the dict of dataframes for each mask
     return dict_of_chan
 
-def ExtractSingleCells(masks,image,channel_names,output):
+def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["mean_intensity"]):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -232,7 +239,7 @@ def ExtractSingleCells(masks,image,channel_names,output):
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
-    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked)
+    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props)
     #Write the singe cell data to a csv file using the image name
 
     im_full_name = os.path.basename(image)
@@ -248,14 +255,14 @@ def ExtractSingleCells(masks,image,channel_names,output):
                             )
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output):
+def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["mean_intensity"]):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output)
+    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props)
 
     #Print update
     im_full_name = os.path.basename(image)
