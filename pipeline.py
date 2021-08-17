@@ -52,15 +52,15 @@ class Pipeline():
         if self.skip != 'morphology':
             self.run_mask()
         if self.skip != 'intensity':
+            assert (self.img_path is not None) & (self.marker_csv_path is not None)
             self.run_img()
-
 
     def run_mask(self):
         if self.skip == 'intensity':
             for path in self.mask_paths:
-                self._run_mask(self, path)
+                self._run_mask(path)
         else:
-            self._run_mask(self, self.mask_paths[0])
+            self._run_mask(self.mask_paths[0])
 
     def _run_mask(self, path, flat=True):
         mask_name = pathlib.Path(path).name
@@ -153,8 +153,8 @@ class Pipeline():
                 if mask_path not in self.intensity_tables:
                     self.intensity_tables[mask_path] = channel_table
                 else:
-                    self.intensity_tables[mask_path].join(channel_table)
-        for mask_path, table in self.intensity_tables:
+                    self.intensity_tables[mask_path] = self.intensity_tables[mask_path].join(channel_table)
+        for mask_path, table in self.intensity_tables.items():
             write_table(
                 reorder_table_column(table), self.output_dir, 
                 mask_path=mask_path, img_path=self.img_path,
