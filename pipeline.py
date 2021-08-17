@@ -12,7 +12,8 @@ from quant_test_v2 import(
     write_table,
     validate_img,
     load_marker_csv,
-    quantify_channel
+    quantify_channel,
+    reorder_table_column
 )
 
 class Pipeline():
@@ -67,6 +68,7 @@ class Pipeline():
         print(f"Quantifying mask <{mask_name}>")
         mask_table = quantify_mask(mask, mask_props=self.mask_props)
         mask_table = format_mask_table(mask_table)
+        mask_table = reorder_table_column(mask_table)
         write_table(
             mask_table, self.output_dir, 
             mask_path=path, img_path=self.img_path,
@@ -154,7 +156,7 @@ class Pipeline():
                     self.intensity_tables[mask_path].join(channel_table)
         for mask_path, table in self.intensity_tables:
             write_table(
-                table, self.output_dir, 
+                reorder_table_column(table), self.output_dir, 
                 mask_path=mask_path, img_path=self.img_path,
                 prefix=self.table_prefix, suffix='_intensity', flat=flat
             )

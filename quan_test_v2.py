@@ -9,8 +9,6 @@ import numpy as np
 import skimage.measure as measure
 
 import tifffile
-import warnings
-import textwrap
 import pathlib
 
 
@@ -44,6 +42,7 @@ EXTRA_PROPS = {
     'median_intensity': median_intensity
 }
 
+
 def quantify_channel(
     mask, intensity_img, 
     intensity_props=None, channel_name=None,
@@ -53,7 +52,7 @@ def quantify_channel(
     if intensity_props is None:
         intensity_props = []
     
-    intensity_props = intensity_props[:] + ['label', 'mean_intensity']
+    intensity_props =  ['label', 'mean_intensity'] + intensity_props[:]
     # Look for regionprops in skimage
     builtin_props = set(intensity_props).intersection(PROP_VALS)
     # Otherwise look for them in this module
@@ -67,37 +66,55 @@ def quantify_channel(
         intensity_img = preprocess_func(intensity_img, **preprocess_func_kwargs)
     props_table = measure.regionprops_table(
         mask, intensity_img,
-        properties = tuple(builtin_props),
-        extra_properties = extra_props
+        properties=tuple(builtin_props),
+        extra_properties=extra_props
     )
+    ordered_props_table = order_dictionary_by_list(props_table, intensity_props)
+    del props_table
     if channel_name is not None:
         def format_name(prop_name):
             if len(extra_props) == 0: return channel_name
             else: return f"{channel_name}_{prop_name}"
-        return {
+        renamed_table =  {
             k if k in NAME_MAP.keys() else format_name(k): v
-            for k, v in props_table.items()
+            for k, v in ordered_props_table.items()
         }
-    if return_img:
-        return props_table, intensity_img
     else:
-        return props_table
+        renamed_table = ordered_props_table
+    if return_img:
+        return renamed_table, intensity_img
+    else:
+        return renamed_table
 
 
 def quantify_mask(mask, mask_props=None):   
-    all_mask_props = set([
+    _all_mask_props = [
         "label", "centroid", "area",
         "major_axis_length", "minor_axis_length",
         "eccentricity", "solidity", "extent", "orientation"
-    ])
+    ]
     if mask_props is not None:
-        all_mask_props = all_mask_props.union(mask_props)
-
-    dat = measure.regionprops_table(
+        all_mask_props = set(_all_mask_props).union(mask_props)
+        _all_mask_props += mask_props
+    else:
+        all_mask_props = set(_all_mask_props)
+    table = measure.regionprops_table(
         mask,
         properties=all_mask_props
     )
-    return dat
+    ordered_table = order_dictionary_by_list(table, _all_mask_props)
+    return ordered_table
+
+
+def order_dictionary_by_list(d, l):
+    return {
+        k: d[k]
+        for k in 
+        sorted(
+            d.keys(),
+            key=lambda x: l.index(x.split('-')[0])
+        )
+    }
 
 
 def load_marker_csv(csv_path):
@@ -169,6 +186,13 @@ def format_mask_table(mask_table):
     mask_table.rename(columns=NAME_MAP, inplace=True)
     mask_table.set_index('CellID', inplace=True)
     return mask_table
+
+
+def reorder_table_column(df):
+    assert df.index.name == 'CellID'
+    col_ordering = tuple(NAME_MAP.values())
+    sort_key = lambda x: col_ordering.index(x) if x in col_ordering else -1
+    return df.reindex(columns=sorted(df.columns, key=sort_key))
 
 
 def write_table(
