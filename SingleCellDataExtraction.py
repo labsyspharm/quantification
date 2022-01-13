@@ -19,10 +19,10 @@ def gini_index(mask, intensity):
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
 
-def median_intensity(mask, intensity):
+def intensity_median(mask, intensity):
     return np.median(intensity[mask])
 
-def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["mean_intensity"]):
+def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"]):
     """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
@@ -100,7 +100,7 @@ def PrepareData(image,z):
     return image_loaded_z
 
 
-def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["mean_intensity"]):
+def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"]):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -154,10 +154,10 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         mask_dict = {}
         # Mean intensity is default property, stored without suffix
         mask_dict.update(
-            zip(channel_names_loaded, [x["mean_intensity"] for x in dict_of_chan[nm]])
+            zip(channel_names_loaded, [x["intensity_mean"] for x in dict_of_chan[nm]])
         )
         # All other properties are suffixed with their names
-        for prop_n in set(dict_of_chan[nm][0].keys()).difference(["mean_intensity"]):
+        for prop_n in set(dict_of_chan[nm][0].keys()).difference(["intensity_mean"]):
             mask_dict.update(
                 zip([f"{n}_{prop_n}" for n in channel_names_loaded], [x[prop_n] for x in dict_of_chan[nm]])
             )
@@ -169,7 +169,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
-def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["mean_intensity"]):
+def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -243,7 +243,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
                             )
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["mean_intensity"]):
+def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
