@@ -82,31 +82,19 @@ def PrepareData(image,z):
 
     #Check to see if image tif(f)
     if image_path.suffix == '.tiff' or image_path.suffix == '.tif' or image_path.suffix == '.btf':
-        #Check to see if the image is ome.tif(f)
-        if  image.endswith(('.ome.tif','.ome.tiff')):
-            #Read the image
-            image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
-            #print('OME TIF(F) found')
-        else:
-            #Read the image
-            image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
-            #print('TIF(F) found')
-            # Remove extra axis
-            #image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[3],image_loaded.shape[4]))
+        image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
 
     #Check to see if image is hdf5
     elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
         #Read the image
-        f = h5py.File(image,'r+')
+        f = h5py.File(image,'r')
         #Get the dataset name from the h5 file
         dat_name = list(f.keys())[0]
-        ###If the hdf5 is exported from ilastik fiji plugin, the dat_name will be 'data'
-        #Get the image data
-        image_loaded = np.array(f[dat_name])
-        #Remove the first axis (ilastik convention)
-        image_loaded = image_loaded.reshape((image_loaded.shape[1],image_loaded.shape[2],image_loaded.shape[3]))
-        ###If the hdf5 is exported from ilastik fiji plugin, the order will need to be
-        ###switched as above --> z_stack = np.swapaxes(z_stack,0,2) --> z_stack = np.swapaxes(z_stack,0,1)
+        #Retrieve the z^th channel
+        image_loaded_z = f[dat_name][0,:,:,z]
+
+    else:
+        raise Exception('mcquant currently supports [OME]TIFF and HDF5 formats only')
 
     #Return the objects
     return image_loaded_z
