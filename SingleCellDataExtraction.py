@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 import skimage.measure as measure
+import tifffile
 
 from pathlib import Path
 
@@ -73,6 +74,19 @@ def MaskIDs(mask, mask_props=None):
 
     return dat
 
+def n_channels(image):
+    """Returns the number of channel in the input image. Supports [OME]TIFF and HDF5."""
+
+    image_path = Path(image)
+
+    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+        s = tifffile.TiffFile(image).series[0]
+        return s.shape[0] if len(s.shape) > 2 else 1	# Handle (w,h) cases
+
+    elif image_path.suffix in ['.h5', '.hdf5']:
+        f = h5py.File(image, 'r')
+        dat_name = list(f.keys())[0]
+        return f[dat_name].shape[3]
 
 def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
@@ -81,11 +95,11 @@ def PrepareData(image,z):
     image_path = Path(image)
 
     #Check to see if image tif(f)
-    if image_path.suffix == '.tiff' or image_path.suffix == '.tif' or image_path.suffix == '.btf':
+    if image_path.suffix in ['.tiff', '.tif', '.btf']:
         image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
 
     #Check to see if image is hdf5
-    elif image_path.suffix == '.h5' or image_path.suffix == '.hdf5':
+    elif image_path.suffix in ['.h5', '.hdf5']:
         #Read the image
         f = h5py.File(image,'r')
         #Get the dataset name from the h5 file
