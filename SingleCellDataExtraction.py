@@ -88,6 +88,9 @@ def n_channels(image):
         dat_name = list(f.keys())[0]
         return f[dat_name].shape[3]
 
+    else:
+        raise Exception('mcquant currently supports [OME]TIFF and HDF5 formats only')
+
 def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
     to use with mc micro ilastik pipeline"""
@@ -190,35 +193,24 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     #Create pathlib object for output
     output = Path(output)
 
-    #Check if header available
-    #sniffer = csv.Sniffer()
-    #sniffer.has_header(open(channel_names).readline())
-    #If header not available
-    #if not sniffer:
-        #If header available
-        #channel_names_loaded = pd.read_csv(channel_names)
-        #channel_names_loaded_list = list(channel_names_loaded.marker_name)
-    #else:
-        #print("negative")
-        #old one column version
-        #channel_names_loaded = pd.read_csv(channel_names,header=None)
-        #Add a column index for ease
-        #channel_names_loaded.columns = ["marker"]
-        #channel_names_loaded = list(channel_names_loaded.marker.values)
-
     #Read csv channel names
     channel_names_loaded = pd.read_csv(channel_names)
-    #Check for size of columns
-    if channel_names_loaded.shape[1] > 1:
+    #Check for the presence of `marker_name` column
+    if 'marker_name' in channel_names_loaded:
         #Get the marker_name column if more than one column (CyCIF structure)
         channel_names_loaded_list = list(channel_names_loaded.marker_name)
-    else:
-        #old one column version -- re-read the csv file and add column name
+    #Consider the old one-marker-per-line plain text format
+    elif channel_names_loaded.shape[1] == 1:
+        #re-read the csv file and add column name
         channel_names_loaded = pd.read_csv(channel_names, header = None)
-        #Add a column index for ease and for standardization
-        channel_names_loaded.columns = ["marker"]
-        channel_names_loaded_list = list(channel_names_loaded.marker)
+        channel_names_loaded_list = list(channel_names_loaded.iloc[:,0])
+    else:
+        raise Exception('%s must contain the marker_name column'%channel_names)
 
+    #Contrast against the number of markers in the image
+    if len(channel_names_loaded_list) != n_channels(image):
+        raise Exception("The number of channels in %s doesn't match the image"%channel_names)
+    
     #Check for unique marker names -- create new list to store new names
     channel_names_loaded_checked = []
     for idx,val in enumerate(channel_names_loaded_list):
@@ -229,9 +221,6 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         else:
             #Otherwise, leave channel name
             channel_names_loaded_checked.append(val)
-
-    #Clear small memory amount by clearing old channel names
-    channel_names_loaded, channel_names_loaded_list = None, None
 
     #Read the masks
     masks_loaded = {}
