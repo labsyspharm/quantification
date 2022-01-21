@@ -81,7 +81,10 @@ def n_channels(image):
 
     if image_path.suffix in ['.tiff', '.tif', '.btf']:
         s = tifffile.TiffFile(image).series[0]
-        return s.shape[0] if len(s.shape) > 2 else 1	# Handle (w,h) cases
+        ndim = len(s.shape)
+        if ndim == 2: return 1
+        elif ndim == 3: return min(s.shape)
+        else: raise Exception('mcquant supports only 2D/3D images.')
 
     elif image_path.suffix in ['.h5', '.hdf5']:
         f = h5py.File(image, 'r')
@@ -99,7 +102,7 @@ def PrepareData(image,z):
 
     #Check to see if image tif(f)
     if image_path.suffix in ['.tiff', '.tif', '.btf']:
-        image_loaded_z = skimage.io.imread(image,img_num=z,plugin='tifffile')
+        image_loaded_z = tifffile.imread(image, key=z)
 
     #Check to see if image is hdf5
     elif image_path.suffix in ['.h5', '.hdf5']:
