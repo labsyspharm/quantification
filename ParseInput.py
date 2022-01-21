@@ -38,7 +38,7 @@ def ParseInputDataExtract():
    #Create a dictionary object to pass to the next function
    dict = {'masks': args.masks, 'image': args.image,\
     'channel_names': args.channel_names,'output':args.output,
-    'intensity_props': set(args.intensity_props if args.intensity_props is not None else []).union(["mean_intensity"]),
+    'intensity_props': set(args.intensity_props if args.intensity_props is not None else []).union(["intensity_mean"]),
     'mask_props': args.mask_props,
    }
    #Print the dictionary object
