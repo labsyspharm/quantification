@@ -239,9 +239,9 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
     # Determine the image name by cutting off its extension
     im_full_name = os.path.basename(image)
     im_tokens = im_full_name.split(os.extsep)
-	if len(fileNamePrefix) < 2:       im_name = im_tokens[0]
-	elif fileNamePrefix[-2] == "ome": im_name = os.extsep.join(im_tokens[0:-2])
-	else:                             im_name = os.extsep.join(im_tokens[0:-1])
+    if len(im_tokens) < 2: im_name = im_tokens[0]
+    elif im_tokens[-2] == "ome": im_name = os.extsep.join(im_tokens[0:-2])
+    else: im_name = os.extsep.join(im_tokens[0:-1])
 
     # iterate through each mask and export csv with mask name as suffix
     for k,v in scdata_z.items():
