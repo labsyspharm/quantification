@@ -12,6 +12,9 @@ import tifffile
 
 from pathlib import Path
 
+## Function to sum intensity values (or in this case transcript counts) using regionprops
+def mask_sum(mask, intensity):
+        return np.sum(intensity[mask])
 
 def gini_index(mask, intensity):
     x = intensity[mask]
