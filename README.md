@@ -20,9 +20,14 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
     By default only mean intensity is calculated.
     If the metric doesn't depend on signal intensity, use `--mask-props` instead.
     See list at https://scikit-image.org/docs/dev/api/skimage.measure.html#regionprops
-    Additionally available is gini_index, which calculates a single number
+
+    Currently, the following additional properties can be specified:
+
+    * `--intensity_props gini_index` : The Gini index calculates a single number
     between 0 and 1, representing how unequal the signal is distributed in each region.
-    See https://en.wikipedia.org/wiki/Gini_coefficient. For example, to calculate the median intensity, specify `--intensity_props median_intensity`.
+    See https://en.wikipedia.org/wiki/Gini_coefficient for more information.
+    * `--intensity_props intensity_median` : Will calculate the median of intensity values per labeled object in the mask.
+    * `--intensity_props intensity_sum` : Will calculate the sum of intensity values per labelled object in the mask. This can be useful if you want to count RNA molecules from FISH based images for example.
 
 # Run script
 `python CommandSingleCellExtraction.py --masks ./segmentation/cellMask.tif ./segmentation/membraneMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv`
@@ -33,4 +38,3 @@ Denis Schapiro (https://github.com/DenisSch)
 Joshua Hess (https://github.com/JoshuaHess12)
 
 Jeremy Muhlich (https://github.com/jmuhlich)
-

@@ -12,19 +12,23 @@ import tifffile
 
 from pathlib import Path
 
-## Function to sum intensity values (or in this case transcript counts) using regionprops
-def intensity_sum(mask, intensity):
-        return np.sum(intensity[mask])
+#### Additional functions that can be specified by the user via intensity_props
 
+## Function to calculate median intensity values per mask 
+def intensity_median(mask, intensity):
+    return np.median(intensity[mask])
+
+## Function to sum intensity values (or in this case transcript counts)
+def intensity_sum(mask, intensity):
+    return np.sum(intensity[mask])
+
+## Function to calculate the gini index: https://en.wikipedia.org/wiki/Gini_coefficient
 def gini_index(mask, intensity):
     x = intensity[mask]
     sorted_x = np.sort(x)
     n = len(x)
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
-
-def intensity_median(mask, intensity):
-    return np.median(intensity[mask])
 
 def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"]):
     """Function for quantifying a single channel image
