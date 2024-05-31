@@ -1,5 +1,6 @@
 #Functions for parsing command line arguments for ome ilastik prep
 import argparse
+from . import __version__
 
 
 def ParseInputDataExtract():
@@ -34,6 +35,7 @@ def ParseInputDataExtract():
       """
    )
    #parser.add_argument('--suffix')
+   parser.add_argument('--version', action='version', version=f'mcquant {__version__}')
    args = parser.parse_args()
    #Create a dictionary object to pass to the next function
    dict = {'masks': args.masks, 'image': args.image,\
