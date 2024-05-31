@@ -1,7 +1,7 @@
 name: quantification
 dependencies:
-  - scikit-image>=0.18.0
+  - scikit-image>=0.23.2
   - h5py
   - pandas
   - numpy
-  - pathlib
+  - imagecodecs
