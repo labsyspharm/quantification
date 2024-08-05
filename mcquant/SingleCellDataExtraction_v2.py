@@ -35,35 +35,6 @@ def gini_index(mask, intensity):
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
 
-## Functions to Calculate the GLCM and gracoprops features
-def calculate_glcm(image, distances=[1], angles=[0]):
-    image_uint8 = ((image - np.min(image)) * (255 / (np.max(image) - np.min(image)))).astype(np.uint8)
-    glcm = graycomatrix(image_uint8, distances, angles)
-    return glcm
-
-def contrast(mask, intensity):
-    glcm = calculate_glcm(intensity[mask])
-    return graycoprops(glcm, 'contrast')[0, 0]
-
-def dissimilarity(mask, intensity):  
-    glcm = calculate_glcm(intensity[mask])
-    return graycoprops(glcm, 'dissimilarity')[0, 0]
-
-def homogeneity(mask, intensity):
-    glcm = calculate_glcm(intensity[mask])
-    return graycoprops(glcm, 'homogeneity')[0, 0]
-
-def energy(mask, intensity):
-    glcm = calculate_glcm(intensity[mask])
-    return graycoprops(glcm, 'energy')[0, 0]
-
-def correlation(mask, intensity):
-    glcm = calculate_glcm(intensity[mask])
-    return graycoprops(glcm, 'correlation')[0, 0]
-
-def ASM(mask, intensity):
-    glcm = calculate_glcm(intensity[mask])  
-    return graycoprops(glcm, 'ASM')[0, 0]
 
 def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"]):
     """Function for quantifying a single channel image
@@ -75,14 +46,30 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(standard_props)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(standard_props)
-    # Calculate graycoprops using glcm 
-    
 
     dat = skimage.measure.regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
-        extra_properties = [globals()[n] for n in extra_props]
+        extra_properties = [globals()[n] for n in extra_props if n not in glcm_features]
     )
+
+    glcm_features_set = {"contrast", "dissimilarity", "homogeneity", "energy", "correlation", "ASM"}
+    glcm_features = {}
+    
+    if glcm_features_set.intersection(intensity_props):
+        for region in skimage.measure.regionprops(mask_loaded, image_loaded_z):
+            label = region.label
+            glcm = graycomatrix(region.intensity_image, [1], [0], symmetric=True, normed=True)
+            glcm_props = {}
+            for prop in glcm_features_set.intersection(intensity_props):
+                glcm_props[prop] = graycoprops(glcm, prop)[0, 0]
+            glcm_features[label] = glcm_props
+
+    if glcm_features:
+        for label, features in glcm_features.items():
+            for prop, value in features.items():
+                dat[prop] = dat.get(prop, []) + [value]
+
     return dat
 
 
