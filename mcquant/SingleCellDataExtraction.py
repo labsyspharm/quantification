@@ -9,8 +9,8 @@ import numpy as np
 import os
 import skimage.measure
 import skimage.measure._regionprops
+from skimage.feature import graycomatrix, graycoprops
 import tifffile
-
 from pathlib import Path
 
 #### Additional functions that can be specified by the user via intensity_props
@@ -23,6 +23,10 @@ def intensity_median(mask, intensity):
 def intensity_sum(mask, intensity):
     return np.sum(intensity[mask])
 
+## FUnction to calculate standard deviation of intensity values
+def intensity_std(mask, intensity):
+    return np.std(intensity[mask])
+
 ## Function to calculate the gini index: https://en.wikipedia.org/wiki/Gini_coefficient
 def gini_index(mask, intensity):
     x = intensity[mask]
@@ -30,6 +34,36 @@ def gini_index(mask, intensity):
     n = len(x)
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
+
+## Function to Calculate the GLCM for gracoprops
+def calculate_glcm(image, distances=[1], angles=[0]):
+    image_uint8 = ((image - np.min(image)) * (255 / (np.max(image) - np.min(image)))).astype(np.uint8)
+    glcm = graycomatrix(image_uint8, distances, angles)
+    return glcm
+
+def contrast(mask, intensity):
+    glcm = calculate_glcm(intensity[mask])
+    return graycoprops(glcm, 'contrast')[0, 0]
+
+def dissimilarity(mask, intensity):  
+    glcm = calculate_glcm(intensity[mask])
+    return graycoprops(glcm, 'dissimilarity')[0, 0]
+
+def homogeneity(mask, intensity):
+    glcm = calculate_glcm(intensity[mask])
+    return graycoprops(glcm, 'homogeneity')[0, 0]
+
+def energy(mask, intensity):
+    glcm = calculate_glcm(intensity[mask])
+    return graycoprops(glcm, 'energy')[0, 0]
+
+def correlation(mask, intensity):
+    glcm = calculate_glcm(intensity[mask])
+    return graycoprops(glcm, 'correlation')[0, 0]
+
+def ASM(mask, intensity):
+    glcm = calculate_glcm(intensity[mask])  
+    return graycoprops(glcm, 'ASM')[0, 0]
 
 def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"]):
     """Function for quantifying a single channel image
@@ -41,6 +75,9 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(standard_props)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(standard_props)
+    # Calculate graycoprops using glcm 
+    
+
     dat = skimage.measure.regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
