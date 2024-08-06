@@ -54,7 +54,7 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
         for region in skimage.measure.regionprops(mask_loaded, image_loaded_z):
             label = region.label
             image_uint8 = ((region.intensity_image - np.min(region.intensity_image)) * (255 / (np.max(region.intensity_image) - np.min(region.intensity_image)))).astype(np.uint8)
-            glcm = graycomatrix(region.intensity_image, [1], [0], symmetric=True, normed=True)
+            glcm = graycomatrix(image_uint8, [1], [0], symmetric=True, normed=True)
             glcm_props = {}
             for prop in glcm_features_set.intersection(intensity_props):
                 glcm_props[prop] = graycoprops(glcm, prop)[0, 0]
