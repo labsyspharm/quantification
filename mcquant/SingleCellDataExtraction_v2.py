@@ -47,12 +47,6 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(standard_props)
 
-    dat = skimage.measure.regionprops_table(
-        mask_loaded, image_loaded_z,
-        properties = tuple(builtin_props),
-        extra_properties = [globals()[n] for n in extra_props if n not in glcm_features]
-    )
-
     glcm_features_set = {"contrast", "dissimilarity", "homogeneity", "energy", "correlation", "ASM"}
     glcm_features = {}
     
@@ -65,11 +59,16 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
                 glcm_props[prop] = graycoprops(glcm, prop)[0, 0]
             glcm_features[label] = glcm_props
 
+    dat = skimage.measure.regionprops_table(
+        mask_loaded, image_loaded_z,
+        properties = tuple(builtin_props),
+        extra_properties = [globals()[n] for n in extra_props if n not in glcm_features]
+    )
+
     if glcm_features:
         for label, features in glcm_features.items():
             for prop, value in features.items():
                 dat[prop] = dat.get(prop, []) + [value]
-
     return dat
 
 
