@@ -1,6 +1,6 @@
 #Functions for parsing command line arguments for ome ilastik prep
 import argparse
-from . import __version__
+from . import __version__ # This still has to be adjusted with __init__.py function
 
 
 def ParseInputDataExtract():
