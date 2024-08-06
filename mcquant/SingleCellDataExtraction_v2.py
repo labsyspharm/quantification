@@ -129,7 +129,7 @@ def n_channels(image):
 
 def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
-    to use with mc micro ilastik pipeline"""
+    to use with mcmicro ilastik pipeline"""
 
     image_path = Path(image)
 
