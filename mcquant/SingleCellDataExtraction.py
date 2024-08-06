@@ -37,7 +37,7 @@ def gini_index(mask, intensity):
 
 ## Functions to Calculate the GLCM and gracoprops features
 def calculate_glcm(intensity, distances=[1], angles=[0]):
-    image_uint8 = ((image - np.min(image)) * (255 / (np.max(image) - np.min(image)))).astype(np.uint8)
+    image_uint8 = ((intensity - np.min(intensity)) * (255 / (np.max(intensity) - np.min(intensity)))).astype(np.uint8)
     glcm = graycomatrix(image_uint8, distances, angles)
     return glcm
 
