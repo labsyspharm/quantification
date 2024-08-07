@@ -38,8 +38,9 @@ def ParseInputDataExtract():
                Will be calculated for every marker
                See https://en.wikipedia.org/wiki/Gini_coefficient
          contrast, dissimilarity, homogeneity, energy, correlation, ASM:
-               glcm/graycoprops features from scikit-image features. The distance is currently set to 1 pixel and angle to 0 rad.
-               will be calculated for every marker
+               glcm/graycoprops features from scikit-image features. The default distance is set to 1 pixel and the default angle is set to 0 rad.
+               Both parameters can be controlled via CLI inputs. However, both parameters are limited to 1 input each.
+               Will be calculated for every marker
                See https://scikit-image.org/docs/stable/api/skimage.feature.html  
       """
    )
