@@ -30,7 +30,7 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
     * `--intensity_props intensity_sum` : Will calculate the sum of intensity values per labelled object in the mask. This can be useful if you want to count RNA molecules from FISH based images for example.
     * `--intensity_props intensity_std` : Will calculate the standard deviation of intensity values per labeled object in the mask.
 
-        Further available are GLCM-derived gracoprops (see https://scikit-image.org/docs/stable/api/skimage.feature.html). Currently these are set to angle 0 and distance 1 pixel:
+        Further available are GLCM-derived graycoprops (see https://scikit-image.org/docs/stable/api/skimage.feature.html). Currently these are set to angle 0 and distance 1 pixel:
     * `--intensity_props contrast` : Will calculate the glcm derived symmetric and normalized contrast of intensity values per labeled object in the mask.
     * `--intensity_props dissimilarity` : Will calculate the glcm derived symmetric and normalized dissimilarity of intensity values per labeled object in the mask.
     * `--intensity_props homogeneity` : Will calculate the glcm derived symmetric and normalized homogeneity of intensity values per labeled object in the mask.
