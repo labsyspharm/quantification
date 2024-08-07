@@ -182,7 +182,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         for nm in range(len(mask_names)):
             #Use the above information to mask z stack
             dict_of_chan[mask_names[nm]].append(
-                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props)
+                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
             )
         #Print progress
         print("Finished "+str(z))
@@ -273,7 +273,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
-    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props)
+    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
     #Write the singe cell data to a csv file using the image name
 
     # Determine the image name by cutting off its extension
@@ -300,7 +300,7 @@ def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, i
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props)
+    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
 
     #Print update
     im_full_name = os.path.basename(image)
