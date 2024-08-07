@@ -43,6 +43,14 @@ def ParseInputDataExtract():
                See https://scikit-image.org/docs/stable/api/skimage.feature.html  
       """
    )
+   parser.add_argument(
+        '--glcm_angle', type=float, default=0,
+        help="Angle in radians for GLCM calculation. Default is 0 radians. Currently limited to 1 angle"
+    )
+   parser.add_argument(
+        '--glcm_distance', type=int, default=1,
+        help="Distance in pixels for GLCM calculation. Default is 1 pixel."
+    )
    #parser.add_argument('--suffix')
    parser.add_argument('--version', action='version', version=f'mcquant {__version__}')
    args = parser.parse_args()
@@ -51,6 +59,9 @@ def ParseInputDataExtract():
     'channel_names': args.channel_names,'output':args.output,
     'intensity_props': set(args.intensity_props if args.intensity_props is not None else []).union(["intensity_mean"]),
     'mask_props': args.mask_props,
+    'glcm_angle': args.glcm_angle,
+    'glcm_distance': args.glcm_distance,
+    
    }
    #Print the dictionary object
    print(dict)

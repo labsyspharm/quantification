@@ -37,6 +37,8 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
     * `--intensity_props energy` : Will calculate the glcm derived symmetric and normalized energy of intensity values per labeled object in the mask.
     * `--intensity_props correlation` : Will calculate the glcm derived symmetric and normalized correlation of intensity values per labeled object in the mask.
     * `--intensity_props ASM` : Will calculate the glcm derived symmetric and normalized ASM of intensity values per labeled object in the mask.
+* `--glcm_angle` Angle in radians used for calculating the GLCM per label. Default is 0 radians.
+* `--glcm_distance` Distance in pixels used for calculating the GLCM per label. Default is 1 pixel.
 
 
 # Run script
