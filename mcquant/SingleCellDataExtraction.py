@@ -59,7 +59,7 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"],
             # Rescale the image to uint8, which is needed for glcm calculation if level attribute is not set.
             image_uint8 = ((region.intensity_image - np.min(region.intensity_image)) * (255 / (np.max(region.intensity_image) - np.min(region.intensity_image)))).astype(np.uint8)
             # Calculate the glcm once per label/cell
-            glcm = graycomatrix(image_uint8, [1], [0], [glcm_distance], [glcm_angle],symmetric=True, normed=True)
+            glcm = graycomatrix(image_uint8, distances = [glcm_distance], angles = [glcm_angle], symmetric = True, normed = True)
             glcm_props = {}
             # Calculate the user-specified feature(s) per label/cell
             for prop in glcm_features_set.intersection(intensity_props):
@@ -160,7 +160,7 @@ def PrepareData(image,z):
     return image_loaded_z
 
 
-def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"]):
+def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -229,7 +229,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
-def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -293,7 +293,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
                             )
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
