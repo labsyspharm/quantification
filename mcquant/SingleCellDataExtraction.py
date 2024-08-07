@@ -9,8 +9,8 @@ import numpy as np
 import os
 import skimage.measure
 import skimage.measure._regionprops
+from skimage.feature import graycomatrix, graycoprops
 import tifffile
-
 from pathlib import Path
 
 #### Additional functions that can be specified by the user via intensity_props
@@ -23,6 +23,10 @@ def intensity_median(mask, intensity):
 def intensity_sum(mask, intensity):
     return np.sum(intensity[mask])
 
+## Function to calculate standard deviation of intensity values
+def intensity_std(mask, intensity):
+    return np.std(intensity[mask])
+
 ## Function to calculate the gini index: https://en.wikipedia.org/wiki/Gini_coefficient
 def gini_index(mask, intensity):
     x = intensity[mask]
@@ -31,7 +35,8 @@ def gini_index(mask, intensity):
     cumx = np.cumsum(sorted_x, dtype=float)
     return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
 
-def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"]):
+
+def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"], glcm_angle=0, glcm_distance=1):
     """Function for quantifying a single channel image
 
     Returns a table with CellID according to the mask and the mean pixel intensity
@@ -41,11 +46,37 @@ def MaskChannel(mask_loaded, image_loaded_z, intensity_props=["intensity_mean"])
     builtin_props = set(intensity_props).intersection(standard_props)
     # Otherwise look for them in this module
     extra_props = set(intensity_props).difference(standard_props)
+
+    # All possible scikit-image gracoprops features from glcm
+    glcm_features_set = {"contrast", "dissimilarity", "homogeneity", "energy", "correlation", "ASM"}
+    glcm_features = {}
+    
+    # Function to calculate the glcm and associated graycoprops per label only if user inputs a glcm metric into --intensity_props
+    if glcm_features_set.intersection(intensity_props):
+        for region in skimage.measure.regionprops(mask_loaded, image_loaded_z):
+            # Get the label/cell
+            label = region.label
+            # Rescale the image to uint8, which is needed for glcm calculation if level attribute is not set.
+            image_uint8 = ((region.intensity_image - np.min(region.intensity_image)) * (255 / (np.max(region.intensity_image) - np.min(region.intensity_image)))).astype(np.uint8)
+            # Calculate the glcm once per label/cell
+            glcm = graycomatrix(image_uint8, distances = [glcm_distance], angles = [glcm_angle], symmetric = True, normed = True)
+            glcm_props = {}
+            # Calculate the user-specified feature(s) per label/cell
+            for prop in glcm_features_set.intersection(intensity_props):
+                glcm_props[prop] = graycoprops(glcm, prop)[0, 0]
+            glcm_features[label] = glcm_props
+
     dat = skimage.measure.regionprops_table(
         mask_loaded, image_loaded_z,
         properties = tuple(builtin_props),
-        extra_properties = [globals()[n] for n in extra_props]
+        extra_properties = [globals()[n] for n in extra_props if n not in glcm_features_set]
     )
+
+    # Add the glcm dict to the regionproperties
+    if glcm_features:
+        for label, features in glcm_features.items():
+            for prop, value in features.items():
+                dat[prop] = dat.get(prop, []) + [value]
     return dat
 
 
@@ -88,7 +119,7 @@ def n_channels(image):
 
     image_path = Path(image)
 
-    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', 'qptiff']:
         s = tifffile.TiffFile(image).series[0]
         ndim = len(s.shape)
         if ndim == 2: return 1
@@ -105,12 +136,12 @@ def n_channels(image):
 
 def PrepareData(image,z):
     """Function for preparing input for maskzstack function. Connecting function
-    to use with mc micro ilastik pipeline"""
+    to use with mcmicro ilastik pipeline"""
 
     image_path = Path(image)
 
     #Check to see if image tif(f)
-    if image_path.suffix in ['.tiff', '.tif', '.btf']:
+    if image_path.suffix in ['.tiff', '.tif', '.btf', 'qptiff']:
         image_loaded_z = tifffile.imread(image, key=z)
 
     #Check to see if image is hdf5
@@ -129,7 +160,7 @@ def PrepareData(image,z):
     return image_loaded_z
 
 
-def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"]):
+def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """This function will extract the stats for each cell mask through each channel
     in the input image
 
@@ -151,7 +182,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
         for nm in range(len(mask_names)):
             #Use the above information to mask z stack
             dict_of_chan[mask_names[nm]].append(
-                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props)
+                MaskChannel(masks_loaded[mask_names[nm]],image_loaded_z, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
             )
         #Print progress
         print("Finished "+str(z))
@@ -198,7 +229,7 @@ def MaskZstack(masks_loaded,image,channel_names_loaded, mask_props=None, intensi
     # Return the dict of dataframes for each mask
     return dict_of_chan
 
-def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """Function for extracting single cell information from input
     path containing single-cell masks, z_stack path, and channel_names path."""
 
@@ -242,7 +273,7 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
         m_name = m_full_name.split('.')[0]
         masks_loaded.update({str(m_name):skimage.io.imread(m,plugin='tifffile')})
 
-    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props)
+    scdata_z = MaskZstack(masks_loaded,image,channel_names_loaded_checked, mask_props=mask_props, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
     #Write the singe cell data to a csv file using the image name
 
     # Determine the image name by cutting off its extension
@@ -262,14 +293,14 @@ def ExtractSingleCells(masks,image,channel_names,output, mask_props=None, intens
                             )
 
 
-def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"]):
+def MultiExtractSingleCells(masks,image,channel_names,output, mask_props=None, intensity_props=["intensity_mean"], glcm_angle = 0, glcm_distance = 1):
     """Function for iterating over a list of z_stacks and output locations to
     export single-cell data from image masks"""
 
     print("Extracting single-cell data for "+str(image)+'...')
 
     #Run the ExtractSingleCells function for this image
-    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props)
+    ExtractSingleCells(masks,image,channel_names,output, mask_props=mask_props, intensity_props=intensity_props, glcm_angle=glcm_angle, glcm_distance=glcm_distance)
 
     #Print update
     im_full_name = os.path.basename(image)
