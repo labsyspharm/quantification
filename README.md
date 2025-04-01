@@ -1,7 +1,14 @@
 # Single cell quantification
 Module for single-cell data extraction given a segmentation mask and multi-channel image. The CSV structure is aligned with histoCAT output.
 
-**CommandSingleCellExtraction.py**:
+## Installation
+1. Download this repository and `cd` into the directory.
+2. `pip install .`
+
+## Run script
+`mcquant --masks ./segmentation/cellMask.tif ./segmentation/membraneMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv`
+
+**mcquant** options:
 
 * `--masks` Paths to where masks are stored (Ex: ./segmentation/cellMask.tif) -> If multiple masks are selected the first mask will be used for spatial feature extraction but all will be quantified
 
@@ -29,12 +36,7 @@ Module for single-cell data extraction given a segmentation mask and multi-chann
     * `--intensity_props intensity_median` : Will calculate the median of intensity values per labeled object in the mask.
     * `--intensity_props intensity_sum` : Will calculate the sum of intensity values per labelled object in the mask. This can be useful if you want to count RNA molecules from FISH based images for example.
 
-# Run script
-`python CommandSingleCellExtraction.py --masks ./segmentation/cellMask.tif ./segmentation/membraneMask.tif --image ./registration/Exemplar_001.h5  --output ./feature_extraction --channel_names ./my_channels.csv`
-
-# Main developer
-Denis Schapiro (https://github.com/DenisSch)
-
-Joshua Hess (https://github.com/JoshuaHess12)
-
-Jeremy Muhlich (https://github.com/jmuhlich)
+## Main developers
+* Denis Schapiro (https://github.com/DenisSch)
+* Joshua Hess (https://github.com/JoshuaHess12)
+* Jeremy Muhlich (https://github.com/jmuhlich)
